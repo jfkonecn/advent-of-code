@@ -1,8 +1,3 @@
-pub enum FileType {
-    Example(i8),
-    Real(i8),
-}
-
 
 macro_rules! challenge_test {
     ($test_name: literal, 
@@ -40,14 +35,14 @@ macro_rules! challenge_test_suite {
         paste! {
         #[test]
         fn [<example_ $idx _should_work>]() {
-            let contents = make_file_path(FileType::Example($idx));
+            let contents = make_file_path(FileType::Example);
             let result = $solution_fun(contents);
             assert_eq!(result, $expected_example);
         }
 
         #[test]
         fn [<real_ $idx _should_work>]() {
-            let contents = make_file_path(FileType::Real($idx));
+            let contents = make_file_path(FileType::Real);
             let result = $solution_fun(contents);
             assert_eq!(result, $expected_real);
         }
@@ -73,8 +68,8 @@ $($solution_tail_fun
             use super::*;
 
             enum FileType {
-                Example(usize),
-                Real(usize),
+                Example,
+                Real,
             }
             fn make_file_path(file_type: FileType) -> String {
                 let mut current_dir = std::env::current_dir().unwrap();
@@ -83,13 +78,13 @@ $($solution_tail_fun
                 )+
 
                 match file_type {
-                    FileType::Example(x) => {
+                    FileType::Example => {
                         current_dir.push("example_inputs");
-                        current_dir.push(format!("part_{}.txt", x));
+                        current_dir.push("input.txt");
                     }
-                    FileType::Real(x) => {
+                    FileType::Real => {
                         current_dir.push("real_inputs");
-                        current_dir.push(format!("part_{}.txt", x));
+                        current_dir.push("input.txt");
                     }
                 };
                 let path = current_dir.display().to_string();
