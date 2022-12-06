@@ -1,5 +1,6 @@
 use crate::common::inputs::challenge_test_suite;
 use itertools::Itertools;
+use std::collections::VecDeque;
 use std::{borrow::Borrow, collections::HashSet};
 
 #[derive(Debug, Clone)]
@@ -41,12 +42,9 @@ impl From<&str> for Command {
     }
 }
 
-fn parse_crates_and_commands<'a>(file_contents: String) -> (Vec<&'a mut Vec<Crate>>, Vec<Command>) {
+fn parse_crates_and_commands(file_contents: String) -> (Vec<Vec<Crate>>, Vec<Command>) {
     let str_vec = file_contents.split("\n\n").collect_vec();
-    let mut crates_str_vec = str_vec[0]
-        .split('\n')
-        // .filter(|x| !x.is_empty())
-        .collect_vec();
+    let mut crates_str_vec = str_vec[0].split('\n').collect_vec();
     let mut crate_vec: Vec<Vec<Crate>> = {
         let temp = crates_str_vec.remove(crates_str_vec.len() - 1);
         parse_line_of_crates(temp)
@@ -54,7 +52,6 @@ fn parse_crates_and_commands<'a>(file_contents: String) -> (Vec<&'a mut Vec<Crat
             .map(|_| vec![])
             .collect_vec()
     };
-    println!("{:?}", crates_str_vec);
     crates_str_vec
         .iter()
         .map(|x| parse_line_of_crates(x))
@@ -66,14 +63,14 @@ fn parse_crates_and_commands<'a>(file_contents: String) -> (Vec<&'a mut Vec<Crat
             })
         });
 
-    let crate_vec: Vec<&'a mut Vec<Crate>> = {
-        let mut temp: Vec<&'a mut Vec<Crate>> = vec![];
+    let crate_vec: Vec<Vec<Crate>> = {
+        let mut temp: Vec<Vec<Crate>> = vec![];
         for v in crate_vec {
             let mut new_v = vec![];
             for c in v.iter().rev().map(|x| x.clone()) {
                 new_v.push(c);
             }
-            temp.push(&mut new_v);
+            temp.push(new_v);
         }
         temp
     };
@@ -86,10 +83,8 @@ fn parse_crates_and_commands<'a>(file_contents: String) -> (Vec<&'a mut Vec<Crat
     (crate_vec, command_vec)
 }
 
-pub fn solution_1(file_contents: String) -> usize {
-    let (crates, commands) = parse_crates_and_commands(file_contents);
-    println!("{:?}", crates);
-    println!("{:?}", commands);
+pub fn solution_1(file_contents: String) -> String {
+    let (mut crates, commands) = parse_crates_and_commands(file_contents);
 
     commands.iter().for_each(
         |Command {
@@ -97,30 +92,50 @@ pub fn solution_1(file_contents: String) -> usize {
              from_idx,
              to_idx,
          }| {
-            let &mut from = &mut crates.get(*from_idx).unwrap();
-            let &mut to = &mut crates.get(*to_idx).unwrap();
             for _ in 0..*amount {
+                let from = crates.get_mut(*from_idx).unwrap();
                 let temp = from.pop().unwrap();
+                let to = crates.get_mut(*to_idx).unwrap();
                 to.push(temp);
             }
         },
     );
 
-    println!("{:?}", crates);
-    2
+    crates.iter().map(|x| x.last().unwrap().label).join("")
 }
 
-pub fn solution_2(file_contents: String) -> usize {
-    2
+pub fn solution_2(file_contents: String) -> String {
+    let (mut crates, commands) = parse_crates_and_commands(file_contents);
+
+    commands.iter().for_each(
+        |Command {
+             amount,
+             from_idx,
+             to_idx,
+         }| {
+            let mut storage = VecDeque::new();
+            let from = crates.get_mut(*from_idx).unwrap();
+            for _ in 0..*amount {
+                let temp = from.pop().unwrap();
+                storage.push_front(temp);
+            }
+            let to = crates.get_mut(*to_idx).unwrap();
+            for c in storage {
+                to.push(c);
+            }
+        },
+    );
+
+    crates.iter().map(|x| x.last().unwrap().label).join("")
 }
 
 challenge_test_suite!(
     solution_1,
-    1,
-    1,
+    "CMZ",
+    "RFFFWBPNS",
     solution_2,
-    1,
-    1,
+    "MCD",
+    "CQQBBJFCS",
     "src",
     "year_2022",
     "day_5"
