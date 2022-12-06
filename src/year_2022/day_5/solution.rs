@@ -63,17 +63,7 @@ fn parse_crates_and_commands(file_contents: String) -> (Vec<Vec<Crate>>, Vec<Com
             })
         });
 
-    let crate_vec: Vec<Vec<Crate>> = {
-        let mut temp: Vec<Vec<Crate>> = vec![];
-        for v in crate_vec {
-            let mut new_v = vec![];
-            for c in v.iter().rev().map(|x| x.clone()) {
-                new_v.push(c);
-            }
-            temp.push(new_v);
-        }
-        temp
-    };
+    crate_vec.iter_mut().for_each(|x| x.reverse());
 
     let command_vec = str_vec[1]
         .split('\n')
