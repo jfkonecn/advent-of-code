@@ -66,8 +66,7 @@ impl<'a> From<&str> for Command {
     }
 }
 
-fn build_file_tree(map: &HashMap<String, Vec<ParsedFile>>, current_path: String) -> FileTree {
-    println!("{}", current_path);
+fn build_file_tree_rec(map: &HashMap<String, Vec<ParsedFile>>, current_path: String) -> FileTree {
     let cur_dir = map.get(&current_path).unwrap();
     let files = cur_dir
         .into_iter()
@@ -77,7 +76,9 @@ fn build_file_tree(map: &HashMap<String, Vec<ParsedFile>>, current_path: String)
                     name: name.clone(),
                     size: size.clone(),
                 },
-                ParsedFile::Directory(x) => build_file_tree(map, format!("{}{}/", current_path, x)),
+                ParsedFile::Directory(x) => {
+                    build_file_tree_rec(map, format!("{}{}/", current_path, x))
+                }
             }
         })
         .collect_vec();
@@ -86,15 +87,8 @@ fn build_file_tree(map: &HashMap<String, Vec<ParsedFile>>, current_path: String)
         files,
     }
 }
-
-pub fn solution_1(file_contents: String) -> usize {
+fn build_file_tree(file_contents: String) -> FileTree {
     let commands = get_commands(&file_contents).collect_vec();
-    // path.push("".to_owned());
-    // path.push("a".to_owned());
-    // path.push("c".to_owned());
-    // println!("{:?}", path.join("/"));
-    // path.pop();
-    // println!("{:?}", path.join("/"));
     let path_map = {
         let mut path: Vec<String> = vec![];
         let mut path_map = HashMap::new();
@@ -117,25 +111,72 @@ pub fn solution_1(file_contents: String) -> usize {
         path_map
     };
 
-    println!("{:?}", path_map);
-    let file_tree = build_file_tree(&path_map, "/".to_owned());
+    build_file_tree_rec(&path_map, "/".to_owned())
+}
 
-    // println!("{:?}", commands);
-    println!("{:?}", file_tree);
-    1
+fn get_dir_sizes_rec(
+    file_trees: &Vec<FileTree>,
+    dir_name: String,
+) -> (Vec<(String, usize)>, usize) {
+    let mut vec: Vec<(String, usize)> = vec![];
+    let mut total: usize = 0;
+    file_trees.iter().for_each(|file_tree| {
+        match file_tree {
+            FileTree::File { size, name } => {
+                total += size;
+            }
+            FileTree::Directory { name, files } => {
+                let (mut sizes, sum) = get_dir_sizes_rec(files, name.clone());
+                total += sum;
+                vec.append(&mut sizes);
+            }
+        };
+    });
+    vec.push((dir_name, total));
+    (vec, total)
+}
+fn get_dir_sizes<'a>(file_tree: FileTree) -> Vec<(String, usize)> {
+    match file_tree {
+        FileTree::Directory { name, files } => {
+            let (vec, _) = get_dir_sizes_rec(&files, name);
+            vec
+        }
+        _ => panic!("unsupported"),
+    }
+}
+
+pub fn solution_1(file_contents: String) -> usize {
+    let file_tree = build_file_tree(file_contents);
+    let sizes = get_dir_sizes(file_tree);
+    sizes
+        .iter()
+        .map(|(_, x)| *x)
+        .filter(|x| x.clone() <= 100000usize)
+        .sum()
 }
 
 pub fn solution_2(file_contents: String) -> usize {
-    1
+    let file_tree = build_file_tree(file_contents);
+    let sizes = get_dir_sizes(file_tree);
+    let sizes = sizes.iter().map(|(_, x)| *x).collect_vec();
+    let space_taken = sizes.iter().max().unwrap();
+    let space_left = 70000000 - space_taken;
+    let min_to_delete = 30000000 - space_left;
+    sizes
+        .iter()
+        .map(|x| x.clone())
+        .filter(|x| (*x).clone() >= min_to_delete)
+        .min()
+        .unwrap()
 }
 
 challenge_test_suite!(
     solution_1,
-    10,
-    1802,
+    95437,
+    1367870,
     solution_2,
-    29,
-    3551,
+    24933642,
+    549173,
     "src",
     "year_2022",
     "day_7"
