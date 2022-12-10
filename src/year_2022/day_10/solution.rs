@@ -27,6 +27,7 @@ impl<'a> From<&str> for Command {
 
 #[derive(Debug, Clone)]
 struct SystemState {
+    end_of_cycle: usize,
     value: isize,
 }
 
@@ -40,25 +41,31 @@ fn parse_commands(file_contents: String) -> Vec<Command> {
 
 fn simulate(commands: Vec<Command>) -> Vec<SystemState> {
     let mut system_value = 1;
+    let mut end_of_cycle = 0;
     let mut history = vec![SystemState {
         value: system_value,
+        end_of_cycle,
     }];
     for command in commands {
         match command {
             Command::Noop => {
+                end_of_cycle += 1;
                 history.push(SystemState {
+                    end_of_cycle,
                     value: system_value,
                 });
             }
             Command::AddX(value) => {
-                // history.push(SystemState {
-                //     value: system_value,
-                // });
+                end_of_cycle += 1;
                 history.push(SystemState {
+                    end_of_cycle,
                     value: system_value,
                 });
+
+                end_of_cycle += 1;
                 system_value += value;
                 history.push(SystemState {
+                    end_of_cycle,
                     value: system_value,
                 });
             }
@@ -70,12 +77,15 @@ fn simulate(commands: Vec<Command>) -> Vec<SystemState> {
 fn get_signal_strength(history: &Vec<SystemState>, cycles: Vec<usize>) -> isize {
     history
         .iter()
-        .enumerate()
-        .filter_map(|(idx, x)| -> Option<isize> {
-            if idx > 0 && cycles.contains(&(idx - 1)) {
-                let cycle: isize = (idx - 1).try_into().unwrap();
+        .filter_map(|x| -> Option<isize> {
+            if x.end_of_cycle == 0 {
+                return None;
+            }
+            let during_cycle = x.end_of_cycle + 1;
+            if cycles.contains(&during_cycle) {
+                let cycle: isize = during_cycle.try_into().unwrap();
                 let result = cycle * x.value;
-                println!("{} * {} = {}", cycle, x.value, result);
+                println!("{}, {} * {} = {}", x.end_of_cycle, cycle, x.value, result);
                 Some(result)
             } else {
                 None
@@ -98,8 +108,8 @@ pub fn solution_2(file_contents: String) -> isize {
 
 challenge_test_suite!(
     solution_1,
-    1,
-    1,
+    13140,
+    13680,
     solution_2,
     1,
     1,
