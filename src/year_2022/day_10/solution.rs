@@ -70,16 +70,35 @@ fn get_signal_strength(history: &Vec<isize>, cycles: Vec<usize>) -> isize {
         .sum()
 }
 
+fn draw(history: &Vec<isize>) -> String {
+    let mut picture = String::from("");
+    for (idx, value) in history.iter().enumerate() {
+        let idx = isize::try_from(idx).unwrap();
+        let px = idx % 40;
+        if px == value - 1 || px == *value || px == value + 1 {
+            picture.push('#');
+        } else {
+            picture.push('.');
+        }
+        if idx % 40 == 39 {
+            picture.push('\n');
+        }
+    }
+    picture
+}
+
 pub fn solution_1(file_contents: String) -> isize {
     let commands = parse_commands(file_contents);
     let history = simulate(commands);
     get_signal_strength(&history, vec![20, 60, 100, 140, 180, 220])
 }
 
-pub fn solution_2(file_contents: String) -> isize {
+pub fn solution_2(file_contents: String) -> String {
     let commands = parse_commands(file_contents);
     let history = simulate(commands);
-    1
+    let picture = draw(&history);
+    println!("{}", picture);
+    picture
 }
 
 challenge_test_suite!(
@@ -87,8 +106,8 @@ challenge_test_suite!(
     13140,
     13680,
     solution_2,
-    1,
-    1,
+    "##..##..##..##..##..##..##..##..##..##..\n###...###...###...###...###...###...###.\n####....####....####....####....####....\n#####.....#####.....#####.....#####.....\n######......######......######......####\n#######.......#######.......#######.....\n.",
+    "###..####..##..###..#..#.###..####.###..\n#..#....#.#..#.#..#.#.#..#..#.#....#..#.\n#..#...#..#....#..#.##...#..#.###..###..\n###...#...#.##.###..#.#..###..#....#..#.\n#....#....#..#.#....#.#..#....#....#..#.\n#....####..###.#....#..#.#....####.###..\n.",
     "src",
     "year_2022",
     "day_10"
