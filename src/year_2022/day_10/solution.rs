@@ -25,12 +25,6 @@ impl<'a> From<&str> for Command {
     }
 }
 
-#[derive(Debug, Clone)]
-struct SystemState {
-    end_of_cycle: usize,
-    value: isize,
-}
-
 fn parse_commands(file_contents: String) -> Vec<Command> {
     file_contents
         .split('\n')
@@ -39,53 +33,35 @@ fn parse_commands(file_contents: String) -> Vec<Command> {
         .collect_vec()
 }
 
-fn simulate(commands: Vec<Command>) -> Vec<SystemState> {
+fn simulate(commands: Vec<Command>) -> Vec<isize> {
     let mut system_value = 1;
-    let mut end_of_cycle = 0;
-    let mut history = vec![SystemState {
-        value: system_value,
-        end_of_cycle,
-    }];
+    let mut history = vec![system_value];
     for command in commands {
         match command {
             Command::Noop => {
-                end_of_cycle += 1;
-                history.push(SystemState {
-                    end_of_cycle,
-                    value: system_value,
-                });
+                history.push(system_value);
             }
             Command::AddX(value) => {
-                end_of_cycle += 1;
-                history.push(SystemState {
-                    end_of_cycle,
-                    value: system_value,
-                });
+                history.push(system_value);
 
-                end_of_cycle += 1;
                 system_value += value;
-                history.push(SystemState {
-                    end_of_cycle,
-                    value: system_value,
-                });
+                history.push(system_value);
             }
         };
     }
     history
 }
 
-fn get_signal_strength(history: &Vec<SystemState>, cycles: Vec<usize>) -> isize {
+fn get_signal_strength(history: &Vec<isize>, cycles: Vec<usize>) -> isize {
     history
         .iter()
-        .filter_map(|x| -> Option<isize> {
-            if x.end_of_cycle == 0 {
-                return None;
-            }
-            let during_cycle = x.end_of_cycle + 1;
+        .enumerate()
+        .filter_map(|(idx, system_value)| -> Option<isize> {
+            let during_cycle = idx + 1;
             if cycles.contains(&during_cycle) {
                 let cycle: isize = during_cycle.try_into().unwrap();
-                let result = cycle * x.value;
-                println!("{}, {} * {} = {}", x.end_of_cycle, cycle, x.value, result);
+                let result = cycle * system_value;
+                println!("{}, {} * {} = {}", idx, cycle, system_value, result);
                 Some(result)
             } else {
                 None
