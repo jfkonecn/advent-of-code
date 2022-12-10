@@ -55,7 +55,7 @@ fn simulate(commands: Vec<Command>, rope_size: usize) -> Vec<Point> {
     visited.insert(head.clone());
 
     for Command { amount, direction } in commands {
-        println!("{:?}", direction);
+        // println!("{:?}", direction);
         for _ in 0..amount {
             match direction {
                 Direction::Up => {
@@ -77,7 +77,7 @@ fn simulate(commands: Vec<Command>, rope_size: usize) -> Vec<Point> {
                 prev = tail;
             }
             visited.insert(prev.clone());
-            println!("{:?} - {:?}", head, rest);
+            // println!("{:?} - {:?}", head, rest);
         }
     }
 
@@ -96,21 +96,25 @@ fn move_tail(head: &Point, tail: &mut Point) {
         tail.y -= 1;
     } else if (head.x == tail.x - 1 && head.y == tail.y - 2)
         || (head.x == tail.x - 2 && head.y == tail.y - 1)
+        || (head.x == tail.x - 2 && head.y == tail.y - 2)
     {
         tail.x -= 1;
         tail.y -= 1;
     } else if (head.x == tail.x + 1 && head.y == tail.y + 2)
         || (head.x == tail.x + 2 && head.y == tail.y + 1)
+        || (head.x == tail.x + 2 && head.y == tail.y + 2)
     {
         tail.x += 1;
         tail.y += 1;
     } else if (head.x == tail.x - 1 && head.y == tail.y + 2)
         || (head.x == tail.x - 2 && head.y == tail.y + 1)
+        || (head.x == tail.x - 2 && head.y == tail.y + 2)
     {
         tail.x -= 1;
         tail.y += 1;
     } else if (head.x == tail.x + 1 && head.y == tail.y - 2)
         || (head.x == tail.x + 2 && head.y == tail.y - 1)
+        || (head.x == tail.x + 2 && head.y == tail.y - 2)
     {
         tail.x += 1;
         tail.y -= 1;
@@ -131,15 +135,97 @@ pub fn solution_2(file_contents: String) -> usize {
 
 challenge_test_suite!(
     solution_1,
-    13,
+    88,
     6337,
     solution_2,
-    1,
-    // 16 is wrong
-    // 13 is wrong
-    // 1 is wrong
-    1,
+    36,
+    2455,
     "src",
     "year_2022",
     "day_9"
 );
+
+#[cfg(test)]
+mod tests2 {
+    use super::*;
+    macro_rules! point_move_tests {
+    ($($name:ident: $value:expr,)*) => {
+    $(
+        #[test]
+        fn $name() {
+            let (head, expected) = $value;
+            let mut tail = Point { x: 0, y: 0 };
+            move_tail(&head, &mut tail);
+            assert_eq!(expected, tail);
+        }
+    )*
+    }
+}
+    point_move_tests!(
+        no_move_1:
+        (
+            Point { x: 0, y: 0 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_2:
+        (
+            Point { x: 1, y: 1 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_3:
+        (
+            Point { x: 1, y: 0 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_4:
+        (
+            Point { x: 1, y: -1 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_5:
+        (
+            Point { x: 0, y: -1 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_6:
+        (
+            Point { x: -1, y: -1 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_7:
+        (
+            Point { x: -1, y: 0 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_8:
+        (
+            Point { x: -1, y: 1 },
+            Point { x: 0, y: 0 }
+        ),
+        no_move_9:
+        (
+            Point { x: 0, y: 1 },
+            Point { x: 0, y: 0 }
+        ),
+        up_1:
+        (
+            Point { x: 0, y: 2 },
+            Point { x: 0, y: 1 }
+        ),
+        down_1:
+        (
+            Point { x: 0, y: -2 },
+            Point { x: 0, y: -1 }
+        ),
+        right_1:
+        (
+            Point { x: 2, y: 0 },
+            Point { x: 1, y: 0 }
+        ),
+        left_1:
+        (
+            Point { x: -2, y: 0 },
+            Point { x: -1, y: 0 }
+        ),
+    );
+}
