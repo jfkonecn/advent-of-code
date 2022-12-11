@@ -48,7 +48,7 @@ impl From<&str> for Monkey {
                 (Operation::Add, Ok(num), _) => Box::new(move |x| x + num),
                 (Operation::Add, Err(_), "old") => Box::new(|x| x + x),
                 (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * num),
-                (Operation::Multiply, Err(_), "old") => Box::new(|x| x + x),
+                (Operation::Multiply, Err(_), "old") => Box::new(|x| x * x),
                 _ => unimplemented!("unknown operation \"{}\"", raw_str),
             }
         };
@@ -106,7 +106,33 @@ fn parse_monkeys<'a>(file_contents: String) -> Vec<Monkey> {
 }
 
 pub fn solution_1(file_contents: String) -> usize {
-    let monkeys = parse_monkeys(file_contents);
+    let mut monkeys = parse_monkeys(file_contents);
+    let mut monkey_items = monkeys.iter().map(|x| x.items.clone()).collect_vec();
+    for i in 0..20 {
+        println!("Round {}", i);
+        for (idx, monkey) in monkeys.iter_mut().enumerate() {
+            println!("Monkey {}:", idx);
+            let items = monkey_items.get_mut(idx).unwrap();
+            println!("{:?}", items);
+            let mut actions = VecDeque::new();
+            while let Some(item) = items.pop_front() {
+                println!("Inspecting {}", item);
+                let item = (monkey.inspect)(item) / 3;
+                println!("New level {}", item);
+                let throw_to = (monkey.throw_to)(item);
+                println!("Throwing to {}", throw_to);
+                monkey.inspections += 1;
+                println!();
+                actions.push_back((item, throw_to));
+            }
+            for (item, throw_to) in actions {
+                monkey_items.get_mut(throw_to).unwrap().push_back(item);
+            }
+            println!();
+        }
+
+        println!("Round {}\n{:?}\n", i, monkey_items);
+    }
     1
 }
 
