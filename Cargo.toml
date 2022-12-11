@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 paste = "1.0.9"
 itertools = "0.10.5"
+num-bigint = "0.4.3"

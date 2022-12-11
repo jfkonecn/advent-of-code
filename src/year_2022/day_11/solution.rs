@@ -1,11 +1,12 @@
 use crate::common::inputs::challenge_test_suite;
 use itertools::Itertools;
+use num_bigint::BigUint;
 use std::collections::*;
 
 struct Monkey {
-    items: VecDeque<usize>,
-    inspect: Box<dyn Fn(usize) -> usize>,
-    throw_to: Box<dyn Fn(usize) -> usize>,
+    items: VecDeque<BigUint>,
+    inspect: Box<dyn Fn(BigUint) -> BigUint>,
+    throw_to: Box<dyn Fn(&BigUint) -> usize>,
     inspections: usize,
 }
 
@@ -30,7 +31,7 @@ impl From<&str> for Monkey {
                 .map(|x| x.trim().parse().unwrap()),
         );
 
-        let inspect: Box<dyn Fn(usize) -> usize> = {
+        let inspect: Box<dyn Fn(BigUint) -> BigUint> = {
             let (opt, num, raw_str) = {
                 let str = str_lines.next().unwrap().split('=').last().unwrap();
                 let (opt, num_str) = if str.contains('*') {
@@ -46,14 +47,14 @@ impl From<&str> for Monkey {
             };
             match (opt, num, raw_str) {
                 (Operation::Add, Ok(num), _) => Box::new(move |x| x + num),
-                (Operation::Add, Err(_), "old") => Box::new(|x| x + x),
+                (Operation::Add, Err(_), "old") => Box::new(|x| &x + &x),
                 (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * num),
-                (Operation::Multiply, Err(_), "old") => Box::new(|x| x * x),
+                (Operation::Multiply, Err(_), "old") => Box::new(|x| x.pow(2)),
                 _ => unimplemented!("unknown operation \"{}\"", raw_str),
             }
         };
 
-        let throw_to: Box<dyn Fn(usize) -> usize> = {
+        let throw_to: Box<dyn Fn(&BigUint) -> usize> = {
             let divide_by: usize = str_lines
                 .next()
                 .unwrap()
@@ -80,7 +81,7 @@ impl From<&str> for Monkey {
                 .unwrap();
 
             Box::new(move |x| {
-                if x % divide_by == 0 {
+                if x % divide_by == BigUint::from(0usize) {
                     true_monkey
                 } else {
                     false_monkey
@@ -105,48 +106,53 @@ fn parse_monkeys<'a>(file_contents: String) -> Vec<Monkey> {
         .collect_vec()
 }
 
-pub fn solution_1(file_contents: String) -> usize {
+fn run_solution(file_contents: String, rounds: usize, divide_by: usize) -> usize {
     let mut monkeys = parse_monkeys(file_contents);
     let mut monkey_items = monkeys.iter().map(|x| x.items.clone()).collect_vec();
-    for i in 0..20 {
-        println!("Round {}", i);
+    for i in 0..rounds {
         for (idx, monkey) in monkeys.iter_mut().enumerate() {
-            println!("Monkey {}:", idx);
             let items = monkey_items.get_mut(idx).unwrap();
-            println!("{:?}", items);
             let mut actions = VecDeque::new();
+            println!("monkey {}", idx);
             while let Some(item) = items.pop_front() {
-                println!("Inspecting {}", item);
-                let item = (monkey.inspect)(item) / 3;
-                println!("New level {}", item);
-                let throw_to = (monkey.throw_to)(item);
-                println!("Throwing to {}", throw_to);
+                let item = (monkey.inspect)(item) / divide_by;
+                let throw_to = (monkey.throw_to)(&item);
                 monkey.inspections += 1;
-                println!();
                 actions.push_back((item, throw_to));
             }
             for (item, throw_to) in actions {
                 monkey_items.get_mut(throw_to).unwrap().push_back(item);
             }
-            println!();
         }
-
-        println!("Round {}\n{:?}\n", i, monkey_items);
+        println!("Round {} of {}", i + 1, rounds);
     }
-    1
+
+    let vec = monkeys.iter().map(|x| x.inspections).collect_vec();
+    println!("{:?}", vec);
+
+    monkeys
+        .iter()
+        .map(|x| x.inspections)
+        .sorted()
+        .rev()
+        .take(2)
+        .product()
+}
+
+pub fn solution_1(file_contents: String) -> usize {
+    run_solution(file_contents, 20, 3)
 }
 
 pub fn solution_2(file_contents: String) -> usize {
-    let monkeys = parse_monkeys(file_contents);
-    1
+    run_solution(file_contents, 10000, 1)
 }
 
 challenge_test_suite!(
     solution_1,
-    1,
-    1,
+    10605,
+    182293,
     solution_2,
-    1,
+    2713310158,
     1,
     "src",
     "year_2022",
