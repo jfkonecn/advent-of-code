@@ -1,12 +1,12 @@
 use crate::common::inputs::challenge_test_suite;
 use itertools::Itertools;
-use num_bigint::BigUint;
+use malachite::Integer;
 use std::collections::*;
 
 struct Monkey {
-    items: VecDeque<BigUint>,
-    inspect: Box<dyn Fn(BigUint) -> BigUint>,
-    throw_to: Box<dyn Fn(&BigUint) -> usize>,
+    items: VecDeque<Integer>,
+    inspect: Box<dyn Fn(Integer) -> Integer>,
+    throw_to: Box<dyn Fn(&Integer) -> usize>,
     inspections: usize,
 }
 
@@ -31,7 +31,7 @@ impl From<&str> for Monkey {
                 .map(|x| x.trim().parse().unwrap()),
         );
 
-        let inspect: Box<dyn Fn(BigUint) -> BigUint> = {
+        let inspect: Box<dyn Fn(Integer) -> Integer> = {
             let (opt, num, raw_str) = {
                 let str = str_lines.next().unwrap().split('=').last().unwrap();
                 let (opt, num_str) = if str.contains('*') {
@@ -46,15 +46,15 @@ impl From<&str> for Monkey {
                 (opt, num_result, num_str)
             };
             match (opt, num, raw_str) {
-                (Operation::Add, Ok(num), _) => Box::new(move |x| x + num),
+                (Operation::Add, Ok(num), _) => Box::new(move |x| x + Integer::from(num)),
                 (Operation::Add, Err(_), "old") => Box::new(|x| &x + &x),
-                (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * num),
-                (Operation::Multiply, Err(_), "old") => Box::new(|x| x.pow(2)),
+                (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * Integer::from(num)),
+                (Operation::Multiply, Err(_), "old") => Box::new(|x| &x * &x),
                 _ => unimplemented!("unknown operation \"{}\"", raw_str),
             }
         };
 
-        let throw_to: Box<dyn Fn(&BigUint) -> usize> = {
+        let throw_to: Box<dyn Fn(&Integer) -> usize> = {
             let divide_by: usize = str_lines
                 .next()
                 .unwrap()
@@ -81,7 +81,7 @@ impl From<&str> for Monkey {
                 .unwrap();
 
             Box::new(move |x| {
-                if x % divide_by == BigUint::from(0usize) {
+                if x % Integer::from(divide_by) == Integer::from(0usize) {
                     true_monkey
                 } else {
                     false_monkey
@@ -106,7 +106,7 @@ fn parse_monkeys<'a>(file_contents: String) -> Vec<Monkey> {
         .collect_vec()
 }
 
-fn run_solution(file_contents: String, rounds: usize, divide_by: usize) -> usize {
+pub fn run_solution(file_contents: String, rounds: usize, divide_by: usize) -> usize {
     let mut monkeys = parse_monkeys(file_contents);
     let mut monkey_items = monkeys.iter().map(|x| x.items.clone()).collect_vec();
     for i in 0..rounds {
@@ -115,7 +115,8 @@ fn run_solution(file_contents: String, rounds: usize, divide_by: usize) -> usize
             let mut actions = VecDeque::new();
             println!("monkey {}", idx);
             while let Some(item) = items.pop_front() {
-                let item = (monkey.inspect)(item) / divide_by;
+                let mut item = (monkey.inspect)(item) / Integer::from(divide_by);
+                // item = 9699690;
                 let throw_to = (monkey.throw_to)(&item);
                 monkey.inspections += 1;
                 actions.push_back((item, throw_to));
@@ -144,7 +145,7 @@ pub fn solution_1(file_contents: String) -> usize {
 }
 
 pub fn solution_2(file_contents: String) -> usize {
-    run_solution(file_contents, 10000, 1)
+    run_solution(file_contents, 1000, 1)
 }
 
 challenge_test_suite!(

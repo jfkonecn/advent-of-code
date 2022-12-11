@@ -1,35 +1,40 @@
-
-macro_rules! challenge_test {
-    ($test_name: literal, 
-        $function:expr, 
-        $expected:literal, 
-        $(,$path: literal)*
+macro_rules! get_challenge {
+    ($($path: literal,)+
     ) => {
 
+        {
+
+                let mut current_dir = std::env::current_dir().unwrap();
+                $(
+                    current_dir.push($path);
+                )+
+                let path = current_dir.display().to_string();
+                std::fs::read_to_string(path).unwrap()
+        }
     }
 }
 
 // https://stackoverflow.com/questions/32817193/how-to-get-index-of-macro-repetition-single-element
 macro_rules! challenge_test_suite {
-    // @ denotes an internal rule 
+    // @ denotes an internal rule
     // https://blog.logrocket.com/macros-in-rust-a-tutorial-with-examples/
     // https://veykril.github.io/tlborm/decl-macros/patterns/internal-rules.html
     /*
     To create an internal rule, add the rule name starting with @ as
-    the argument. Now the macro will never match for an internal 
+    the argument. Now the macro will never match for an internal
     rule until explicitly specified as an argument.
     */
-    ( 
-       @step $idx:expr, 
+    (
+       @step $idx:expr,
     ) => {
 
     };
-    ( 
-       @step $idx:expr, $solution_fun:ident, 
-        $expected_example:literal, 
+    (
+       @step $idx:expr, $solution_fun:ident,
+        $expected_example:literal,
         $expected_real:literal
-       $(,$solution_tail_fun:ident 
-        ,$expected_tail_example:literal 
+       $(,$solution_tail_fun:ident
+        ,$expected_tail_example:literal
         ,$expected_tail_real:literal)*,
     ) => {
         paste! {
@@ -48,15 +53,15 @@ macro_rules! challenge_test_suite {
         }
         }
 // can't do $idx + 1 outside a function :'(
-challenge_test_suite!(@step 2, 
+challenge_test_suite!(@step 2,
 $($solution_tail_fun
         ,$expected_tail_example
         ,$expected_tail_real,)*
 );
     };
-    ( 
-       $($solution_fun:ident 
-        ,$expected_example:literal 
+    (
+       $($solution_fun:ident
+        ,$expected_example:literal
         ,$expected_real:literal,)+
         $($path: literal),+
     ) => {
@@ -91,7 +96,7 @@ $($solution_tail_fun
                 fs::read_to_string(path).unwrap()
             }
 
-challenge_test_suite!(@step 1, 
+challenge_test_suite!(@step 1,
 $($solution_fun
         ,$expected_example
         ,$expected_real,)+
@@ -99,11 +104,11 @@ $($solution_fun
 
         }
     };
-    // ($solution_1_fun:expr, 
-    //     $expected_1_example:literal, 
-    //     $expected_1_real:literal, 
-    //     $solution_2_fun:expr, 
-    //     $expected_2_example:literal, 
+    // ($solution_1_fun:expr,
+    //     $expected_1_example:literal,
+    //     $expected_1_real:literal,
+    //     $solution_2_fun:expr,
+    //     $expected_2_example:literal,
     //     $expected_2_real:literal
     //     $(,$path: literal)+
     // ) => {
@@ -112,3 +117,4 @@ $($solution_fun
 }
 
 pub(crate) use challenge_test_suite;
+pub(crate) use get_challenge;
