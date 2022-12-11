@@ -1,12 +1,12 @@
 use crate::common::inputs::challenge_test_suite;
 use itertools::Itertools;
-use malachite::Integer;
 use std::collections::*;
 
 struct Monkey {
-    items: VecDeque<Integer>,
-    inspect: Box<dyn Fn(Integer) -> Integer>,
-    throw_to: Box<dyn Fn(&Integer) -> usize>,
+    items: VecDeque<usize>,
+    divide_by: usize,
+    inspect: Box<dyn Fn(usize) -> usize>,
+    throw_to: Box<dyn Fn(usize) -> usize>,
     inspections: usize,
 }
 
@@ -31,7 +31,7 @@ impl From<&str> for Monkey {
                 .map(|x| x.trim().parse().unwrap()),
         );
 
-        let inspect: Box<dyn Fn(Integer) -> Integer> = {
+        let inspect: Box<dyn Fn(usize) -> usize> = {
             let (opt, num, raw_str) = {
                 let str = str_lines.next().unwrap().split('=').last().unwrap();
                 let (opt, num_str) = if str.contains('*') {
@@ -46,15 +46,15 @@ impl From<&str> for Monkey {
                 (opt, num_result, num_str)
             };
             match (opt, num, raw_str) {
-                (Operation::Add, Ok(num), _) => Box::new(move |x| x + Integer::from(num)),
+                (Operation::Add, Ok(num), _) => Box::new(move |x| x + num),
                 (Operation::Add, Err(_), "old") => Box::new(|x| &x + &x),
-                (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * Integer::from(num)),
+                (Operation::Multiply, Ok(num), _) => Box::new(move |x| x * num),
                 (Operation::Multiply, Err(_), "old") => Box::new(|x| &x * &x),
                 _ => unimplemented!("unknown operation \"{}\"", raw_str),
             }
         };
 
-        let throw_to: Box<dyn Fn(&Integer) -> usize> = {
+        let (throw_to, divide_by): (Box<dyn Fn(usize) -> usize>, usize) = {
             let divide_by: usize = str_lines
                 .next()
                 .unwrap()
@@ -80,19 +80,22 @@ impl From<&str> for Monkey {
                 .parse()
                 .unwrap();
 
-            Box::new(move |x| {
-                if x % Integer::from(divide_by) == Integer::from(0usize) {
+            let divide_by_cp = divide_by.clone();
+            let f = Box::new(move |x| {
+                if x % divide_by == 0 {
                     true_monkey
                 } else {
                     false_monkey
                 }
-            })
+            });
+            (f, divide_by_cp)
         };
 
         Monkey {
             items,
             inspect,
             throw_to,
+            divide_by,
             inspections: 0,
         }
     }
@@ -109,15 +112,16 @@ fn parse_monkeys<'a>(file_contents: String) -> Vec<Monkey> {
 pub fn run_solution(file_contents: String, rounds: usize, divide_by: usize) -> usize {
     let mut monkeys = parse_monkeys(file_contents);
     let mut monkey_items = monkeys.iter().map(|x| x.items.clone()).collect_vec();
+    let random_divider: usize = monkeys.iter().map(|x| x.divide_by).product();
     for i in 0..rounds {
         for (idx, monkey) in monkeys.iter_mut().enumerate() {
             let items = monkey_items.get_mut(idx).unwrap();
             let mut actions = VecDeque::new();
             println!("monkey {}", idx);
             while let Some(item) = items.pop_front() {
-                let mut item = (monkey.inspect)(item) / Integer::from(divide_by);
-                // item = 9699690;
-                let throw_to = (monkey.throw_to)(&item);
+                let mut item = (monkey.inspect)(item) / divide_by;
+                item %= random_divider;
+                let throw_to = (monkey.throw_to)(item);
                 monkey.inspections += 1;
                 actions.push_back((item, throw_to));
             }
@@ -145,7 +149,7 @@ pub fn solution_1(file_contents: String) -> usize {
 }
 
 pub fn solution_2(file_contents: String) -> usize {
-    run_solution(file_contents, 1000, 1)
+    run_solution(file_contents, 10000, 1)
 }
 
 challenge_test_suite!(
@@ -154,7 +158,7 @@ challenge_test_suite!(
     182293,
     solution_2,
     2713310158,
-    1,
+    54832778815,
     "src",
     "year_2022",
     "day_11"
