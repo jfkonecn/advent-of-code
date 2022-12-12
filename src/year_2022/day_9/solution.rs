@@ -15,7 +15,7 @@ struct Command {
     direction: Direction,
 }
 
-impl<'a> From<&str> for Command {
+impl From<&str> for Command {
     fn from(str: &str) -> Self {
         let str = str.to_owned();
         let mut raw_strs = str.split_ascii_whitespace();
