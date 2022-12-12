@@ -14,7 +14,7 @@ struct Node {
     row: usize,
     col: usize,
     height: usize,
-    distance_to_end: usize,
+    distance_to_end: f64,
     node_type: NodeType,
 }
 
@@ -33,25 +33,42 @@ impl From<String> for Graph {
     fn from(str: String) -> Self {
         let str_lines = str.split('\n').filter(|x| !x.is_empty());
         let mut raw_start = (0, 0);
+        let mut raw_end = (0, 0);
         let mut raw_nodes = HashMap::new();
         for (row, str) in str_lines.enumerate() {
             for (col, c_num) in str.chars().map(|x| x as usize).enumerate() {
-                let node_type = if 'S' as usize == c_num {
+                let (node_type, height) = if 'S' as usize == c_num {
                     raw_start = (row, col);
-                    NodeType::Start
+                    (NodeType::Start, 0)
                 } else if 'E' as usize == c_num {
-                    NodeType::End
+                    raw_end = (row, col);
+                    (NodeType::End, ('z' as usize - 'a' as usize) + 2)
                 } else {
-                    NodeType::Middle
+                    (NodeType::Middle, c_num - 'a' as usize + 1)
                 };
-                raw_nodes.insert((row, col), (c_num, node_type));
+                raw_nodes.insert((row, col), (height, node_type));
             }
         }
 
-        let nodes = HashMap::new();
+        let mut nodes = HashMap::new();
 
-        for raw_node in &raw_nodes {
-            let t = raw_nodes.get(&(0, 0)).unwrap();
+        for ((row, col), (height, node_type)) in &raw_nodes {
+            let (row, col) = (*row, *col);
+            let (end_row, end_col) = raw_end;
+            let distance_to_end = f64::sqrt(
+                f64::powi(row.abs_diff(end_row) as f64, 2)
+                    + f64::powi(col.abs_diff(end_col) as f64, 2),
+            );
+            nodes.insert(
+                (row, col),
+                Node {
+                    col,
+                    row,
+                    distance_to_end,
+                    height: *height,
+                    node_type: node_type.clone(),
+                },
+            );
         }
         Graph {
             nodes,
@@ -62,7 +79,7 @@ impl From<String> for Graph {
 
 pub fn solution_1(file_contents: String) -> usize {
     let graph = Graph::from(file_contents);
-    println!("{:?}", graph);
+    println!("{:#?}", graph);
     1
 }
 
