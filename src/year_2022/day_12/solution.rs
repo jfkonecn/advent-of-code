@@ -15,7 +15,7 @@ struct Node {
     row: usize,
     col: usize,
     height: usize,
-    distance_to_end: f64,
+    distance_to_end: usize,
     node_type: NodeType,
 }
 
@@ -24,21 +24,14 @@ struct Graph {
     nodes: HashMap<(usize, usize), Node>,
 }
 
-enum Operation {
-    Add,
-    Multiply,
-}
-
 impl From<String> for Graph {
     fn from(str: String) -> Self {
         let str_lines = str.split('\n').filter(|x| !x.is_empty());
-        let mut raw_start = (0, 0);
         let mut raw_end = (0, 0);
         let mut raw_nodes = HashMap::new();
         for (row, str) in str_lines.enumerate() {
             for (col, c_num) in str.chars().map(|x| x as usize).enumerate() {
                 let (node_type, height) = if 'S' as usize == c_num {
-                    raw_start = (row, col);
                     (NodeType::Start, 0)
                 } else if 'E' as usize == c_num {
                     raw_end = (row, col);
@@ -59,6 +52,7 @@ impl From<String> for Graph {
                 f64::powi(row.abs_diff(end_row) as f64, 2)
                     + f64::powi(col.abs_diff(end_col) as f64, 2),
             );
+            let distance_to_end = (distance_to_end * 1000f64) as usize;
             nodes.insert(
                 (row, col),
                 Node {
@@ -78,6 +72,7 @@ impl From<String> for Graph {
 struct State {
     cost: usize,
     position: usize,
+    distance_to_end: usize,
 }
 
 // The priority queue depends on `Ord`.
@@ -91,7 +86,7 @@ impl Ord for State {
         other
             .cost
             .cmp(&self.cost)
-            .then_with(|| self.position.cmp(&other.position))
+            .then_with(|| self.position.cmp(&other.distance_to_end))
     }
 }
 
@@ -107,6 +102,7 @@ impl PartialOrd for State {
 struct Edge {
     node: usize,
     cost: usize,
+    distance_to_goal: usize,
 }
 
 // Dijkstra's shortest path algorithm.
@@ -116,7 +112,7 @@ struct Edge {
 // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 // for a simpler implementation.
 fn shortest_path(graph: &Graph) -> Option<usize> {
-    let (adj_list, start, goal) = {
+    let (adj_list, start, goal, start_distance_to_goal) = {
         let vec = graph
             .nodes
             .iter()
@@ -125,6 +121,7 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
             .collect_vec();
         let mut adj_list = vec![];
         let mut start = 0;
+        let mut start_distance_to_goal = 0;
         let mut goal = 0;
 
         let mut id_map = HashMap::new();
@@ -134,6 +131,7 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
         for (node_id, node) in vec.iter().enumerate() {
             if let NodeType::Start = node.node_type {
                 start = node_id;
+                start_distance_to_goal = node.distance_to_end;
             } else if let NodeType::End = node.node_type {
                 goal = node_id;
             }
@@ -161,6 +159,7 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
                             Some(Edge {
                                 node: *cur_node_id,
                                 cost: 1,
+                                distance_to_goal: cur_node.distance_to_end,
                             })
                         } else {
                             None
@@ -173,9 +172,7 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
 
             adj_list.push(edges);
         }
-        println!("{:#?}", adj_list);
-        println!("({}, {})", start, goal);
-        (adj_list, start, goal)
+        (adj_list, start, goal, start_distance_to_goal)
     };
 
     // dist[node] = current shortest distance from `start` to `node`
@@ -188,10 +185,11 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
     heap.push(State {
         cost: 0,
         position: start,
+        distance_to_end: start_distance_to_goal,
     });
 
     // Examine the frontier with lower cost nodes first (min-heap)
-    while let Some(State { cost, position }) = heap.pop() {
+    while let Some(State { cost, position, .. }) = heap.pop() {
         // Alternatively we could have continued to find all shortest paths
         if position == goal {
             return Some(cost);
@@ -208,6 +206,7 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
             let next = State {
                 cost: cost + edge.cost,
                 position: edge.node,
+                distance_to_end: edge.distance_to_goal,
             };
 
             // If so, add it to the frontier and continue
