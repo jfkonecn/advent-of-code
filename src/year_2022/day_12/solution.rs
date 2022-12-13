@@ -36,10 +36,10 @@ impl From<String> for Graph {
             for (col, c_num) in str.chars().map(|x| x as usize).enumerate() {
                 let (node_type, height) = if 'S' as usize == c_num {
                     raw_start = (row, col);
-                    (NodeType::Start, 0)
+                    (NodeType::Start, 1)
                 } else if 'E' as usize == c_num {
                     raw_end = (row, col);
-                    (NodeType::End, ('z' as usize - 'a' as usize) + 2)
+                    (NodeType::End, 26)
                 } else {
                     (NodeType::Middle, c_num - 'a' as usize + 1)
                 };
@@ -75,139 +75,29 @@ impl From<String> for Graph {
         }
     }
 }
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct State {
-    cost: usize,
-    position: usize,
-    distance_to_end: usize,
-}
-
-// The priority queue depends on `Ord`.
-// Explicitly implement the trait so the queue becomes a min-heap
-// instead of a max-heap.
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Notice that the we flip the ordering on costs.
-        // In case of a tie we compare positions - this step is necessary
-        // to make implementations of `PartialEq` and `Ord` consistent.
-        other
-            .cost
-            .cmp(&self.cost)
-            .then_with(|| self.position.cmp(&other.distance_to_end))
-    }
-}
-
-// `PartialOrd` needs to be implemented as well.
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// Each node is represented as a `usize`, for a shorter implementation.
-#[derive(Debug)]
-struct Edge {
-    node: usize,
-    cost: usize,
-    distance_to_goal: usize,
-}
-
-// Dijkstra's shortest path algorithm.
-
-// Start at `start` and use `dist` to track the current shortest distance
-// to each node. This implementation isn't memory-efficient as it may leave duplicate
-// nodes in the queue. It also uses `usize::MAX` as a sentinel value,
-// for a simpler implementation.
-fn shortest_path(graph: &Graph) -> Option<(Vec<Node>, usize)> {
-    let (adj_list, start, goal, start_distance_to_goal) = {
-        let vec = graph
-            .nodes
-            .iter()
-            .sorted_by(|(a, _), (b, _)| Ord::cmp(a, b))
-            .map(|(_, x)| x)
-            .collect_vec();
-        let mut adj_list = vec![];
-        let mut start = 0;
-        let mut start_distance_to_goal = 0;
-        let mut goal = 0;
-
-        let mut id_map = HashMap::new();
-        for (id, node) in vec.iter().enumerate() {
-            id_map.insert((node.row, node.col), id);
-        }
-        for (node_id, node) in vec.iter().enumerate() {
-            if let NodeType::Start = node.node_type {
-                start = node_id;
-                start_distance_to_goal = node.distance_to_end;
-            } else if let NodeType::End = node.node_type {
-                goal = node_id;
-            }
-            let mut edges = vec![(1, 0), (0, 1)];
-            if node.row > 0 {
-                edges.push((-1, 0));
-            }
-            if node.col > 0 {
-                edges.push((0, -1));
-            }
-
-            let edges = edges
-                .iter()
-                .filter_map(|(x, y)| {
-                    let key = (
-                        ((node.row as isize) + x) as usize,
-                        ((node.col as isize) + y) as usize,
-                    );
-                    let cur_node_id_opt = id_map.get(&key);
-                    if let Some(cur_node_id) = cur_node_id_opt {
-                        let cur_node = graph.nodes.get(&key).unwrap();
-                        if cur_node.height.abs_diff(node.height) <= 1
-                            || cur_node.height < node.height
-                        {
-                            Some(Edge {
-                                node: *cur_node_id,
-                                cost: 1,
-                                distance_to_goal: cur_node.distance_to_end,
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect_vec();
-
-            adj_list.push(edges);
-        }
-        (adj_list, start, goal, start_distance_to_goal)
-    };
-
-    pathfinding::directed::astar::astar(
-        &graph.start,
+fn shortest_path(graph: &Graph, start: &Node) -> Option<(Vec<Node>, usize)> {
+    pathfinding::directed::dijkstra::dijkstra(
+        // pathfinding::directed::astar::astar(
+        start,
         |node: &Node| {
             let node = node.clone();
-            let mut edges = vec![(1, 0), (0, 1)];
+            let mut edges = vec![(node.row + 1, node.col), (node.row, node.col + 1)];
             if node.row > 0 {
-                edges.push((-1, 0));
+                edges.push((node.row - 1, node.col));
             }
             if node.col > 0 {
-                edges.push((0, -1));
+                edges.push((node.row, node.col - 1));
             }
             let edges = edges
                 .iter()
-                .filter_map(move |(x, y)| {
-                    let key = (
-                        ((node.row as isize) + x) as usize,
-                        ((node.col as isize) + y) as usize,
-                    );
+                .filter_map(move |key| {
                     let cur_node_id_opt = graph.nodes.get(&key);
                     if let Some(_) = cur_node_id_opt {
                         let cur_node = graph.nodes.get(&key).unwrap();
                         if cur_node.height.abs_diff(node.height) <= 1
                             || cur_node.height < node.height
                         {
-                            Some((cur_node.clone(), 1))
+                            Some((cur_node.clone(), 100000))
                         } else {
                             None
                         }
@@ -218,33 +108,41 @@ fn shortest_path(graph: &Graph) -> Option<(Vec<Node>, usize)> {
                 .collect_vec();
             edges
         },
-        |x| 1,
         |x| x.node_type == NodeType::End,
     )
 }
 
 pub fn solution_1(file_contents: String) -> usize {
     let graph = Graph::from(file_contents);
-    let (vec, cost) = shortest_path(&graph).unwrap();
-    println!("{:?}", vec);
-    println!("{}", vec.len());
-    cost
+    let (vec, _) = shortest_path(&graph, &graph.start).unwrap();
+    vec.len() - 1
 }
 
 pub fn solution_2(file_contents: String) -> usize {
     let graph = Graph::from(file_contents);
-    1
+    let shortest = graph
+        .nodes
+        .iter()
+        .filter(|(_, x)| x.height == 1)
+        .map(|(_, x)| x.clone());
+    let mut dist = usize::MAX;
+    for short in shortest {
+        let opt = shortest_path(&graph, &short);
+
+        if let Some((vec, _)) = opt {
+            dist = dist.min(vec.len() - 1);
+        }
+    }
+    dist
 }
 
 challenge_test_suite!(
     solution_1,
     31,
-    // 358 too high
-    // 352 too high
-    0,
+    350,
     solution_2,
-    1,
-    1,
+    29,
+    349,
     "src",
     "year_2022",
     "day_12"
