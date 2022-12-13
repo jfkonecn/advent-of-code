@@ -3,14 +3,14 @@ use itertools::Itertools;
 use std::cmp::*;
 use std::collections::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NodeType {
     Start,
     Middle,
     End,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Node {
     row: usize,
     col: usize,
@@ -22,16 +22,20 @@ struct Node {
 #[derive(Debug, Clone)]
 struct Graph {
     nodes: HashMap<(usize, usize), Node>,
+    start: Node,
+    end: Node,
 }
 
 impl From<String> for Graph {
     fn from(str: String) -> Self {
         let str_lines = str.split('\n').filter(|x| !x.is_empty());
+        let mut raw_start = (0, 0);
         let mut raw_end = (0, 0);
         let mut raw_nodes = HashMap::new();
         for (row, str) in str_lines.enumerate() {
             for (col, c_num) in str.chars().map(|x| x as usize).enumerate() {
                 let (node_type, height) = if 'S' as usize == c_num {
+                    raw_start = (row, col);
                     (NodeType::Start, 0)
                 } else if 'E' as usize == c_num {
                     raw_end = (row, col);
@@ -64,7 +68,11 @@ impl From<String> for Graph {
                 },
             );
         }
-        Graph { nodes }
+        Graph {
+            start: nodes.get(&raw_start).unwrap().clone(),
+            end: nodes.get(&raw_end).unwrap().clone(),
+            nodes,
+        }
     }
 }
 
@@ -111,7 +119,7 @@ struct Edge {
 // to each node. This implementation isn't memory-efficient as it may leave duplicate
 // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 // for a simpler implementation.
-fn shortest_path(graph: &Graph) -> Option<usize> {
+fn shortest_path(graph: &Graph) -> Option<(Vec<Node>, usize)> {
     let (adj_list, start, goal, start_distance_to_goal) = {
         let vec = graph
             .nodes
@@ -175,56 +183,52 @@ fn shortest_path(graph: &Graph) -> Option<usize> {
         (adj_list, start, goal, start_distance_to_goal)
     };
 
-    // dist[node] = current shortest distance from `start` to `node`
-    let mut dist: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
-
-    let mut heap = BinaryHeap::new();
-
-    // We're at `start`, with a zero cost
-    dist[start] = 0;
-    heap.push(State {
-        cost: 0,
-        position: start,
-        distance_to_end: start_distance_to_goal,
-    });
-
-    // Examine the frontier with lower cost nodes first (min-heap)
-    while let Some(State { cost, position, .. }) = heap.pop() {
-        // Alternatively we could have continued to find all shortest paths
-        if position == goal {
-            return Some(cost);
-        }
-
-        // Important as we may have already found a better way
-        if cost > dist[position] {
-            continue;
-        }
-
-        // For each node we can reach, see if we can find a way with
-        // a lower cost going through this node
-        for edge in &adj_list[position] {
-            let next = State {
-                cost: cost + edge.cost,
-                position: edge.node,
-                distance_to_end: edge.distance_to_goal,
-            };
-
-            // If so, add it to the frontier and continue
-            if next.cost < dist[next.position] {
-                heap.push(next);
-                // Relaxation, we have now found a better way
-                dist[next.position] = next.cost;
+    pathfinding::directed::astar::astar(
+        &graph.start,
+        |node: &Node| {
+            let node = node.clone();
+            let mut edges = vec![(1, 0), (0, 1)];
+            if node.row > 0 {
+                edges.push((-1, 0));
             }
-        }
-    }
-
-    // Goal not reachable
-    None
+            if node.col > 0 {
+                edges.push((0, -1));
+            }
+            let edges = edges
+                .iter()
+                .filter_map(move |(x, y)| {
+                    let key = (
+                        ((node.row as isize) + x) as usize,
+                        ((node.col as isize) + y) as usize,
+                    );
+                    let cur_node_id_opt = graph.nodes.get(&key);
+                    if let Some(_) = cur_node_id_opt {
+                        let cur_node = graph.nodes.get(&key).unwrap();
+                        if cur_node.height.abs_diff(node.height) <= 1
+                            || cur_node.height < node.height
+                        {
+                            Some((cur_node.clone(), 1))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect_vec();
+            edges
+        },
+        |x| 1,
+        |x| x.node_type == NodeType::End,
+    )
 }
 
 pub fn solution_1(file_contents: String) -> usize {
     let graph = Graph::from(file_contents);
-    shortest_path(&graph).unwrap()
+    let (vec, cost) = shortest_path(&graph).unwrap();
+    println!("{:?}", vec);
+    println!("{}", vec.len());
+    cost
 }
 
 pub fn solution_2(file_contents: String) -> usize {
@@ -235,6 +239,7 @@ pub fn solution_2(file_contents: String) -> usize {
 challenge_test_suite!(
     solution_1,
     31,
+    // 358 too high
     // 352 too high
     0,
     solution_2,
