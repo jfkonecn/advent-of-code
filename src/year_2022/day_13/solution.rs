@@ -5,13 +5,6 @@ use std::collections::*;
 use std::fmt::format;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum OrderResult {
-    OutOfOrder,
-    InOrder,
-    Equal,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PacketList {
     list: Vec<PacketIndex>,
 }
@@ -36,7 +29,6 @@ fn cmp_rec(first: &PacketIndex, second: &PacketIndex) -> Ordering {
         (PacketIndex::List(x_list), PacketIndex::List(y_list)) => {
             let mut x_iter = x_list.list.iter();
             let mut y_iter = y_list.list.iter();
-            println!("({}, {})", x_iter.len(), y_iter.len());
             let len_order_result = if x_iter.len() == y_iter.len() {
                 Ordering::Equal
             } else if x_iter.len() > y_iter.len() {
@@ -44,9 +36,7 @@ fn cmp_rec(first: &PacketIndex, second: &PacketIndex) -> Ordering {
             } else {
                 Ordering::Less
             };
-            println!("{:?}", len_order_result);
             while let (Some(x), Some(y)) = (x_iter.next(), y_iter.next()) {
-                println!("({:?}, {:?})", x, y);
                 let order_result = cmp_rec(x, y);
                 if order_result != Ordering::Equal {
                     return order_result;
@@ -131,71 +121,12 @@ fn parse_packets(str: String) -> Vec<(PacketList, PacketList)> {
         .collect_vec()
 }
 
-fn is_ordered_rec(first: &PacketIndex, second: &PacketIndex) -> OrderResult {
-    match (first, second) {
-        (PacketIndex::Num(x), PacketIndex::Num(y)) => {
-            if x < y {
-                OrderResult::InOrder
-            } else if x > y {
-                OrderResult::OutOfOrder
-            } else {
-                OrderResult::Equal
-            }
-        }
-        (PacketIndex::List(x_list), PacketIndex::List(y_list)) => {
-            let mut x_iter = x_list.list.iter();
-            let mut y_iter = y_list.list.iter();
-            println!("({}, {})", x_iter.len(), y_iter.len());
-            let len_order_result = if x_iter.len() == y_iter.len() {
-                OrderResult::Equal
-            } else if x_iter.len() > y_iter.len() {
-                OrderResult::OutOfOrder
-            } else {
-                OrderResult::InOrder
-            };
-            println!("{:?}", len_order_result);
-            while let (Some(x), Some(y)) = (x_iter.next(), y_iter.next()) {
-                println!("({:?}, {:?})", x, y);
-                let order_result = is_ordered_rec(x, y);
-                if order_result != OrderResult::Equal {
-                    return order_result;
-                }
-            }
-            len_order_result
-        }
-        (PacketIndex::List(_), PacketIndex::Num(_)) => is_ordered_rec(
-            first,
-            &PacketIndex::List(PacketList {
-                list: vec![second.clone()],
-            }),
-        ),
-        (PacketIndex::Num(_), PacketIndex::List(_)) => is_ordered_rec(
-            &PacketIndex::List(PacketList {
-                list: vec![first.clone()],
-            }),
-            second,
-        ),
-    }
-}
-
-fn is_ordered(first: &PacketList, second: &PacketList) -> OrderResult {
-    let x = is_ordered_rec(
-        &PacketIndex::List(first.clone()),
-        &PacketIndex::List(second.clone()),
-    );
-    println!("{:?}", first);
-    println!("{:?}", second);
-    println!("{:?}", x);
-    println!("");
-    x
-}
-
 pub fn solution_1(file_contents: String) -> usize {
     let packets = parse_packets(file_contents);
     packets
         .iter()
         .enumerate()
-        .filter(|(_, (x, y))| is_ordered(x, y) != OrderResult::OutOfOrder)
+        .filter(|(_, (x, y))| x.cmp(y) != Ordering::Greater)
         .map(|(x, _)| x + 1)
         .sum()
 }
@@ -206,12 +137,34 @@ pub fn solution_2(file_contents: String) -> usize {
         .filter(|x| !x.is_empty())
         .map(|x| -> PacketList { x.into() })
         .collect_vec();
+    let starter = PacketList {
+        list: vec![PacketIndex::List(PacketList {
+            list: vec![PacketIndex::Num(2)],
+        })],
+    };
+    let ender = PacketList {
+        list: vec![PacketIndex::List(PacketList {
+            list: vec![PacketIndex::Num(6)],
+        })],
+    };
+    packets.push(starter.clone());
+    packets.push(ender.clone());
     packets.sort();
-    for x in packets {
-        println!("{:?}", x);
-        println!("");
-    }
-    1
+    let start_idx = packets
+        .iter()
+        .enumerate()
+        .find(|(_, x)| x.clone() == &starter)
+        .unwrap()
+        .0
+        + 1;
+    let end_idx = packets
+        .iter()
+        .enumerate()
+        .find(|(_, x)| x.clone() == &ender)
+        .unwrap()
+        .0
+        + 1;
+    start_idx * end_idx
 }
 
 challenge_test_suite!(
@@ -219,8 +172,8 @@ challenge_test_suite!(
     13,
     6478,
     solution_2,
-    1,
-    1,
+    140,
+    21922,
     "src",
     "year_2022",
     "day_13"
