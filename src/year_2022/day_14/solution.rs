@@ -18,7 +18,6 @@ fn parse_rocks(str: String) -> HashMap<(usize, usize), CaveItemType> {
         let mut pre_y: usize = pre_point.next().unwrap().trim().parse().unwrap();
         while let Some(point_str) = iter.next() {
             let mut point = point_str.split(",");
-            println!("\"{}\"", point_str);
             let x: usize = point.next().unwrap().trim().parse().unwrap();
             let y: usize = point.next().unwrap().trim().parse().unwrap();
 
@@ -42,25 +41,62 @@ fn parse_rocks(str: String) -> HashMap<(usize, usize), CaveItemType> {
     hash_map
 }
 
+fn total_rocks_stacked(
+    mut rocks: HashMap<(usize, usize), CaveItemType>,
+    is_solution_2: bool,
+) -> usize {
+    let mut total_rocks_stacked = 0;
+    let deepest_point = *rocks.iter().map(|((_, x), _)| x).max().unwrap();
+    let mut should_continue = true;
+    while should_continue {
+        let (mut cur_x, mut cur_y) = (500, 0);
+        if rocks.contains_key(&(cur_x, cur_y)) {
+            break;
+        }
+        should_continue = false;
+        while cur_y < deepest_point + 3 {
+            if !rocks.contains_key(&(cur_x, cur_y + 1)) {
+                cur_y += 1;
+            } else if !rocks.contains_key(&(cur_x - 1, cur_y + 1)) {
+                cur_x -= 1;
+                cur_y += 1;
+            } else if !rocks.contains_key(&(cur_x + 1, cur_y + 1)) {
+                cur_x += 1;
+                cur_y += 1;
+            } else {
+                rocks.insert((cur_x, cur_y), CaveItemType::Sand);
+                total_rocks_stacked += 1;
+                should_continue = true;
+                break;
+            }
+            if is_solution_2 && cur_y == deepest_point + 1 {
+                rocks.insert((cur_x, cur_y), CaveItemType::Sand);
+                total_rocks_stacked += 1;
+                should_continue = true;
+                break;
+            }
+        }
+    }
+    total_rocks_stacked
+}
+
 pub fn solution_1(file_contents: String) -> usize {
-    let rocks = parse_rocks(file_contents);
-    println!(
-        "{:?}",
-        rocks.into_iter().map(|(x, _)| x).sorted().collect_vec()
-    );
-    1
+    let mut rocks = parse_rocks(file_contents);
+    total_rocks_stacked(rocks, false)
 }
 
 pub fn solution_2(file_contents: String) -> usize {
-    1
+    let mut rocks = parse_rocks(file_contents);
+
+    total_rocks_stacked(rocks, true)
 }
 
 challenge_test_suite!(
     solution_1,
-    1,
-    1,
+    24,
+    715,
     solution_2,
-    1,
+    93,
     1,
     "src",
     "year_2022",
