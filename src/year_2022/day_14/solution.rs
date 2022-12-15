@@ -97,7 +97,7 @@ challenge_test_suite!(
     715,
     solution_2,
     93,
-    1,
+    25248,
     "src",
     "year_2022",
     "day_14"
