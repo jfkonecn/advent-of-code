@@ -67,24 +67,6 @@ fn parse_map(str: String) -> Vec<SBPair> {
                 .trim()
                 .parse()
                 .unwrap();
-            println!("--------------");
-            println!("Sensor ({}, {}) - Beacon ({}, {})", s_x, s_y, b_x, b_y);
-            // let distance = (s_x.abs_diff(b_x) + s_y.abs_diff(b_y)) as isize;
-            // for y in s_y - distance..s_y + distance + 1 {
-            //     let x_distance = distance - s_y.abs_diff(y) as isize;
-            //     for x in s_x - x_distance..s_x + x_distance + 1 {
-            //         let map_type = if x == s_x && y == s_y {
-            //             MapType::Sensor
-            //         } else if x == b_x && y == b_y {
-            //             MapType::Beacon
-            //         } else {
-            //             MapType::Empty
-            //         };
-            //         println!("({}, {}) - {:?}", x, y, map_type);
-            //         hash_map.insert((x, y), map_type);
-            //     }
-            // }
-            println!("--------------");
             SBPair {
                 signal_point: (s_x, s_y),
                 beacon_point: (b_x, b_y),
@@ -95,7 +77,6 @@ fn parse_map(str: String) -> Vec<SBPair> {
 
 pub fn solution_1(file_contents: String) -> usize {
     let pairs = parse_map(file_contents);
-    println!("{:?}", pairs);
     let y = 2000000;
     let set = pairs
         .iter()
