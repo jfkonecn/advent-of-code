@@ -40,14 +40,11 @@ impl SBPair {
         let distance = self.max_distance();
         let (s_x, s_y) = self.signal_point;
         let distance_left = distance - s_y.abs_diff(y) as isize;
-        println!("getting x range for ({}, {})", s_x, s_y);
         if distance_left < 0 {
-            println!("out of range");
             None
         } else {
             let x_min = s_x - distance_left;
             let x_max = s_x + distance_left;
-            println!("range {}..{}", x_min, x_max);
             Some((x_min, x_max))
         }
     }
@@ -110,28 +107,18 @@ fn parse_map(str: String) -> Vec<SBPair> {
         .collect_vec()
 }
 
-fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> HashSet<(isize, isize)> {
-    // let set = pairs
-    //     .iter()
-    //     .map(|x| x.get_empty_points(y, is_solution_2))
-    //     .fold(HashSet::new(), |mut acc, set| {
-    //         for x in set {
-    //             acc.insert(x);
-    //         }
-    //         acc
-    //     });
-
+fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Vec<(isize, isize)> {
     let beacon_and_signals: HashSet<_> = pairs
         .iter()
         .flat_map(|x| vec![x.signal_point, x.beacon_point])
         .collect();
 
-    let mut set = HashSet::new();
+    let mut vec = Vec::new();
 
     let iter = pairs.iter().filter_map(|x| x.get_x_range(y));
 
     if iter.clone().count() == 0 {
-        return set;
+        return vec;
     }
 
     let min_x = {
@@ -154,30 +141,25 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> HashSet<
         }
     };
 
-    println!("{} .. {} + 1", min_x, max_x);
-
     for x in min_x..max_x + 1 {
         let point = (x, y);
-        // println!("checking ({}, {})", x, y);
         if !is_solution_2 && beacon_and_signals.contains(&point) {
-            println!("in b and s");
             continue;
         }
         for pair in pairs {
             if pair.is_in_range(point) {
-                // println!("in range");
-                set.insert(point);
+                vec.push(point);
+                break;
             }
         }
     }
-    set
+    vec
 }
 
 fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<isize> {
     let mut iter = beacon_not_in(&pairs, y, is_solution_2).into_iter().sorted();
     let (mut pre_x, _) = iter.next().unwrap();
     while let Some((x, _)) = iter.next() {
-        println!("({}, {}) -> ({}, {})", pre_x, y, x, y);
         if pre_x + 1 < x {
             return Some(pre_x + 1);
         }
@@ -189,7 +171,6 @@ fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<is
 pub fn solution_1(file_contents: String) -> usize {
     let pairs = parse_map(file_contents);
     let y = 2000000;
-    // let y = 10;
     let set = beacon_not_in(&pairs, y, false);
     set.len()
 }
@@ -209,8 +190,8 @@ pub fn solution_2(file_contents: String) -> isize {
         .max()
         .unwrap()
         .min(4000000);
-    println!("{} .. {} + 1", min_y, max_y);
     for y in min_y..max_y + 1 {
+        println!("testing y : {}", y);
         let opt_x = check_if_gap(&pairs, y, true);
         if let Some(x) = opt_x {
             println!("answer ({}, {})", x, y);
