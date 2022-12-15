@@ -107,18 +107,16 @@ fn parse_map(str: String) -> Vec<SBPair> {
         .collect_vec()
 }
 
-fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Vec<(isize, isize)> {
+fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> (isize, Option<isize>) {
     let beacon_and_signals: HashSet<_> = pairs
         .iter()
         .flat_map(|x| vec![x.signal_point, x.beacon_point])
         .collect();
 
-    let mut vec = Vec::new();
-
     let iter = pairs.iter().filter_map(|x| x.get_x_range(y));
 
     if iter.clone().count() == 0 {
-        return vec;
+        return (0, None);
     }
 
     let min_x = {
@@ -141,6 +139,10 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Vec<(isi
         }
     };
 
+    let mut count = 0;
+    let mut pre_x = min_x;
+    let mut result = -1;
+
     for x in min_x..max_x + 1 {
         let point = (x, y);
         if !is_solution_2 && beacon_and_signals.contains(&point) {
@@ -148,31 +150,29 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Vec<(isi
         }
         for pair in pairs {
             if pair.is_in_range(point) {
-                vec.push(point);
+                if is_solution_2 && pre_x + 1 < x {
+                    // return (count, pre_x + 1);
+                    return (count, Some(pre_x + 1));
+                }
+                count += 1;
+                pre_x = x;
                 break;
             }
         }
     }
-    vec
+    (count, None)
 }
 
 fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<isize> {
-    let mut iter = beacon_not_in(&pairs, y, is_solution_2).into_iter();
-    let (mut pre_x, _) = iter.next().unwrap();
-    while let Some((x, _)) = iter.next() {
-        if pre_x + 1 < x {
-            return Some(pre_x + 1);
-        }
-        pre_x = x;
-    }
-    None
+    let (_, x) = beacon_not_in(&pairs, y, is_solution_2);
+    x
 }
 
 pub fn solution_1(file_contents: String) -> usize {
     let pairs = parse_map(file_contents);
     let y = 2000000;
-    let set = beacon_not_in(&pairs, y, false);
-    set.len()
+    let (len, _) = beacon_not_in(&pairs, y, false);
+    len as usize
 }
 
 pub fn solution_2(file_contents: String) -> isize {
