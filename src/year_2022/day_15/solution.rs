@@ -157,7 +157,7 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Vec<(isi
 }
 
 fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<isize> {
-    let mut iter = beacon_not_in(&pairs, y, is_solution_2).into_iter().sorted();
+    let mut iter = beacon_not_in(&pairs, y, is_solution_2).into_iter();
     let (mut pre_x, _) = iter.next().unwrap();
     while let Some((x, _)) = iter.next() {
         if pre_x + 1 < x {
