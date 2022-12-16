@@ -140,9 +140,9 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> (isize, 
     };
 
     let mut count = 0;
-    let mut pre_x = min_x;
-    let mut result = -1;
 
+    let expected_sum: isize = (min_x..max_x + 1).sum();
+    let mut actual_sum = 0;
     for x in min_x..max_x + 1 {
         let point = (x, y);
         if !is_solution_2 && beacon_and_signals.contains(&point) {
@@ -150,17 +150,18 @@ fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> (isize, 
         }
         for pair in pairs {
             if pair.is_in_range(point) {
-                if is_solution_2 && pre_x + 1 < x {
-                    // return (count, pre_x + 1);
-                    return (count, Some(pre_x + 1));
-                }
+                actual_sum += x;
                 count += 1;
-                pre_x = x;
                 break;
             }
         }
     }
-    (count, None)
+    let result = if expected_sum != actual_sum {
+        Some(expected_sum - actual_sum)
+    } else {
+        None
+    };
+    (count, result)
 }
 
 fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<isize> {
