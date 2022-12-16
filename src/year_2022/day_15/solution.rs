@@ -108,60 +108,78 @@ fn parse_map(str: String) -> Vec<SBPair> {
 }
 
 fn beacon_not_in(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> (isize, Option<isize>) {
-    let beacon_and_signals: HashSet<_> = pairs
-        .iter()
-        .flat_map(|x| vec![x.signal_point, x.beacon_point])
-        .collect();
-
-    let iter = pairs.iter().filter_map(|x| x.get_x_range(y));
+    let iter = pairs.iter().filter_map(|x| x.get_x_range(y)).sorted();
 
     if iter.clone().count() == 0 {
         return (0, None);
     }
 
-    let min_x = {
-        let min_x = iter.clone().map(|(x, _)| x).min().unwrap();
-
-        if is_solution_2 && min_x < 0 {
-            0
-        } else {
-            min_x
-        }
-    };
-
-    let max_x = {
-        let max_x = iter.map(|(_, x)| x).max().unwrap();
-
-        if is_solution_2 && max_x > 4000000 {
-            4000000
-        } else {
-            max_x
-        }
-    };
-
     let mut count = 0;
 
-    let expected_sum: isize = (min_x..max_x + 1).sum();
-    let mut actual_sum = 0;
-    for x in min_x..max_x + 1 {
-        let point = (x, y);
-        if !is_solution_2 && beacon_and_signals.contains(&point) {
-            continue;
-        }
-        for pair in pairs {
-            if pair.is_in_range(point) {
-                actual_sum += x;
-                count += 1;
-                break;
+    if is_solution_2 {
+        let seed = iter.clone().map(|(x, _)| x).min().unwrap().max(0);
+        let result = iter
+            .sorted()
+            .map(|(x, y)| {
+                if x < 0 {
+                    (0, y)
+                } else if x > 4000000 {
+                    (4000000, y)
+                } else {
+                    (x, y)
+                }
+            })
+            .fold(((seed, seed), None), |acc, a| {
+                let ((x_s_1, x_b_1), opt) = acc;
+                let (x_s_2, x_b_2) = a;
+                if x_b_1 - x_s_2 == -2 {
+                    ((x_b_1, x_s_2), Some(x_b_1 + 1))
+                } else {
+                    ((x_s_1, x_b_2.max(x_b_1)), opt)
+                }
+            })
+            .1;
+        (count, result)
+    } else {
+        let min_x = {
+            let min_x = iter.clone().map(|(x, _)| x).min().unwrap();
+
+            if is_solution_2 && min_x < 0 {
+                0
+            } else {
+                min_x
+            }
+        };
+
+        let max_x = {
+            let max_x = iter.map(|(_, x)| x).max().unwrap();
+
+            if is_solution_2 && max_x > 4000000 {
+                4000000
+            } else {
+                max_x
+            }
+        };
+        let beacon_and_signals: HashSet<_> = pairs
+            .iter()
+            .flat_map(|x| vec![x.signal_point, x.beacon_point])
+            .collect();
+        for x in min_x..max_x + 1 {
+            let point = (x, y);
+            if !is_solution_2 && beacon_and_signals.contains(&point) {
+                continue;
+            }
+            for pair in pairs {
+                if pair.is_in_range(point) {
+                    // actual_sum += x;
+                    count += 1;
+                    break;
+                }
             }
         }
+
+        (count, None)
     }
-    let result = if expected_sum != actual_sum {
-        Some(expected_sum - actual_sum)
-    } else {
-        None
-    };
-    (count, result)
 }
 
 fn check_if_gap(pairs: &Vec<SBPair>, y: isize, is_solution_2: bool) -> Option<isize> {
@@ -209,7 +227,7 @@ challenge_test_suite!(
     5878678,
     solution_2,
     56000011,
-    1,
+    11796491041245,
     "src",
     "year_2022",
     "day_15"
