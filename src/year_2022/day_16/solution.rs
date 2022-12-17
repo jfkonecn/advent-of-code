@@ -121,19 +121,20 @@ fn max_pressure_rec(
         .filter(|x| time_left > x.distance + 1 && !visited.contains(&x.to))
         .flat_map(|tunnel| {
             let next_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap();
-            let time_left = time_left - tunnel.distance - 1;
+            let time_left_new = time_left - tunnel.distance - 1;
 
-            let t = max_pressure_rec(next_valve, graph, time_left, &visited)
+            let t = max_pressure_rec(next_valve, graph, time_left_new, &visited)
                 .into_iter()
                 .map(|(pressure, vec)| {
-                    let pressure_delta = time_left * tunnel.flow_rate;
-                    // if visited.len() == 4 && tunnel.to == "HH" && cur_valve.id == "JJ" {
-                    if visited.len() == 6 && tunnel.to == "CC" && cur_valve.id == "EE" {
+                    let pressure_delta = time_left_new * tunnel.flow_rate;
+                    // if visited.len() == 3 && tunnel.to == "JJ" && cur_valve.id == "BB" {
+                    if visited.len() == 4 && tunnel.to == "HH" && cur_valve.id == "JJ" {
+                    // if visited.len() == 6 && tunnel.to == "CC" && cur_valve.id == "EE" {
                     // if visited.len() == 1 && tunnel.to == "DD" && cur_valve.id == "AA" {
                         // if visited.len() == 1 && tunnel.to == "DD" {
                         // if visited.len() == 2 && tunnel.to == "BB" && cur_valve.id == "DD" {
-                            println!("From {} go to {} arrive at {} pressure released by valve {} ({}, {:?})",
-                        cur_valve.id, tunnel.to, time_left, pressure_delta, tunnel.distance, visited,
+                            println!("From {} go to {} start at {} arrive at {} pressure released by valve {} ({}, {:?})",
+                        cur_valve.id, tunnel.to, time_left, time_left_new, pressure_delta, tunnel.distance, visited,
                     );
                         }
                     let pressure = pressure + pressure_delta;
@@ -143,9 +144,9 @@ fn max_pressure_rec(
             t
         })
         .collect_vec();
-    if cur_valve.id == "DD" && visited.len() == 2 {
-        println!("{:?}", t);
-    }
+    // if cur_valve.id == "DD" && visited.len() == 2 {
+    //     println!("{:?}", t);
+    // }
     if t.len() == 0 {
         return vec![(0, visited)];
     } else {
