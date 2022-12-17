@@ -105,42 +105,65 @@ fn max_pressure_rec(
     graph: &Vec<Valve>,
     time_left: usize,
     visited: &Vec<String>,
-) -> (usize, Vec<String>) {
-    let mut visited = visited.clone();
-    visited.push(cur_valve.id.clone());
+) -> Vec<(usize, Vec<String>)> {
+    let visited = {
+        let mut visited = visited.clone();
+        visited.push(cur_valve.id.clone());
+        visited
+    };
     if time_left < 2 {
-        return (0, visited);
+        return vec![(0, visited)];
     }
 
-    let temp = cur_valve
+    let t = cur_valve
         .tunnels
         .iter()
         .filter(|x| time_left > x.distance + 1 && !visited.contains(&x.to))
-        .map(|tunnel| {
+        .flat_map(|tunnel| {
             let next_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap();
             let time_left = time_left - tunnel.distance - 1;
-            let (mut pressure, vec) = max_pressure_rec(next_valve, graph, time_left, &visited);
-            let pressure_delta = time_left * tunnel.flow_rate;
-            if visited.len() == 4 && tunnel.to == "HH" && cur_valve.id == "JJ" {
-                println!(
-                    "From {} go to {} arrive at {} pressure released by valve {} ({}, {:?})",
-                    cur_valve.id, tunnel.to, time_left, pressure_delta, tunnel.distance, visited,
-                );
+
+            if visited.len() == 2 && cur_valve.id == "DD" {
+                println!("exploring {}", tunnel.to);
             }
-            pressure += pressure_delta;
-            (pressure, vec)
-        });
-    if let Some((pressure_released, max_visited)) = temp.max_by_key(|x| x.0) {
-        (pressure_released, max_visited)
+            let t = max_pressure_rec(next_valve, graph, time_left, &visited)
+                .into_iter()
+                .map(|(pressure, vec)| {
+                    let pressure_delta = time_left * tunnel.flow_rate;
+                    // if visited.len() == 4 && tunnel.to == "HH" && cur_valve.id == "JJ" {
+                    // if visited.len() == 1 && tunnel.to == "DD" && cur_valve.id == "AA" {
+                    //     if visited.len() == 1 && tunnel.to == "DD" {
+                    //     // if visited.len() == 2 && tunnel.to == "BB" && cur_valve.id == "DD" {
+                    //         println!("From {} go to {} arrive at {} pressure released by valve {} ({}, {:?})",
+                    //     cur_valve.id, tunnel.to, time_left, pressure_delta, tunnel.distance, visited,
+                    // );
+                    //     }
+                    let pressure = pressure + pressure_delta;
+                    (pressure, vec.clone())
+                })
+                .collect_vec();
+            if visited.len() == 2 && cur_valve.id == "DD" && tunnel.to == "BB" {
+                println!("dd result {:?}", t);
+            }
+            t
+        })
+        .collect_vec();
+    if cur_valve.id == "DD" && visited.len() == 2 {
+        println!("{:?}", t);
+    }
+    if t.len() == 0 {
+        return vec![(0, visited)];
     } else {
-        (0, visited)
+        t
     }
 }
 
 fn max_pressure(cur_valve: &Valve, graph: &Vec<Valve>) -> usize {
-    let (pressure, vec) = max_pressure_rec(cur_valve, graph, 30, &vec![]);
+    let results = max_pressure_rec(cur_valve, graph, 30, &vec![]);
+    // println!("{:#?}", results);
+    let (pressure, vec) = results.iter().max_by_key(|x| x.0).unwrap();
     println!("{:#?}", vec);
-    pressure
+    *pressure
 
     // let mut visited = HashMap::new();
     // let mut stack = vec![(cur_valve, 30, 0)];
