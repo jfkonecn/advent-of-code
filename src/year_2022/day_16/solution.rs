@@ -110,13 +110,14 @@ fn max_pressure_rec(
     graph: &Vec<Valve>,
     time_left: usize,
     visited: &Vec<String>,
+    limit: usize,
 ) -> Vec<(usize, Vec<String>)> {
     let visited = {
         let mut visited = visited.clone();
         visited.push(cur_valve.id.clone());
         visited
     };
-    if time_left < 2 {
+    if time_left < 2 || limit < visited.len() {
         return vec![(0, visited)];
     }
 
@@ -128,7 +129,7 @@ fn max_pressure_rec(
             let next_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap();
             let time_left_new = time_left - tunnel.distance - 1;
 
-            let t = max_pressure_rec(next_valve, graph, time_left_new, &visited)
+            let t = max_pressure_rec(next_valve, graph, time_left_new, &visited, limit)
                 .into_iter()
                 .map(|(pressure, vec)| {
                     let pressure_delta = time_left_new * tunnel.flow_rate;
@@ -147,110 +148,99 @@ fn max_pressure_rec(
 }
 
 fn max_pressure(cur_valve: &Valve, graph: &Vec<Valve>) -> usize {
-    let results = max_pressure_rec(cur_valve, graph, 30, &vec![]);
+    let results = max_pressure_rec(cur_valve, graph, 30, &vec![], usize::MAX);
     // println!("{:#?}", results);
     let (pressure, vec) = results.iter().max_by_key(|x| x.0).unwrap();
     println!("{:#?}", vec);
     *pressure
-}
-
-fn max_pressure_rec_part_2(
-    cur_valves: &Vec<(usize, Valve)>,
-    graph: &Vec<Valve>,
-    visited: &Vec<String>,
-) -> Vec<(usize, Vec<String>)> {
-    let visited = {
-        let mut visited = visited.clone();
-        visited.append(&mut cur_valves.iter().map(|(_, x)| x.id.clone()).collect_vec());
-        visited
-    };
-    if cur_valves.iter().any(|(time_left, _)| time_left < &2usize) {
-        return vec![(0, visited)];
-    }
-
-    let results = graph
-        .iter()
-        .filter(|x| !visited.contains(&x.id))
-        .combinations_with_replacement(2)
-        .flat_map(|x| vec![x.clone(), x.clone().into_iter().rev().collect_vec()])
-        .filter(|x| x.iter().all_unique())
-        .flat_map(|valves| {
-            let mut iter = valves
-                .into_iter()
-                .enumerate()
-                .map(|(idx, valve)| {
-                    graph
-                        .iter()
-                        .find(|x| x.id == valve.id)
-                        .unwrap()
-                        .tunnels
-                        .iter()
-                        .map(move |x| {
-                            let (time_left, _) = cur_valves.get(idx).unwrap();
-                            (*time_left, x)
-                        })
-                })
-                .filter(|x| {
-                    x.clone().all(|(time_left, x)| {
-                        time_left > x.distance + 1 && !visited.contains(&x.to)
-                    })
-                });
-
-            if iter.clone().count() != 2 {
-                return vec![];
-            }
-
-            let first = iter.next().unwrap();
-            iter.next()
-                .unwrap()
-                .into_iter()
-                .zip(first)
-                .map(|(x, y)| vec![x, y])
-                .collect_vec()
-        })
-        .flat_map(|tunnels| {
-            let next_valves = tunnels
-                .into_iter()
-                .map(|(time_left, tunnel)| {
-                    let time_left_new = time_left - tunnel.distance - 1;
-                    let next_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap().clone();
-                    (time_left_new, next_valve)
-                })
-                .collect_vec();
-
-            let t = max_pressure_rec_part_2(&next_valves, graph, &visited)
-                .into_iter()
-                .map(|(pressure, vec)| {
-                    // let pressure_delta = time_left_new * tunnels.flow_rate;
-                    let pressure_delta: usize = cur_valves
-                        .iter()
-                        .map(|(time_left, valve)| time_left * valve.flow_rate)
-                        .sum();
-
-                    let pressure = pressure + pressure_delta;
-                    (pressure, vec.clone())
-                })
-                .collect_vec();
-            t
-        })
-        .collect_vec();
-    if results.len() == 0 {
-        return vec![(0, visited)];
-    } else {
-        results
-    }
 }
 
 fn max_pressure_part_2(cur_valve: &Valve, graph: &Vec<Valve>) -> usize {
-    let results = max_pressure_rec_part_2(
-        &vec![(26, cur_valve.clone()), (26, cur_valve.clone())],
-        graph,
-        &vec![],
-    );
-    // println!("{:#?}", results);
-    let (pressure, vec) = results.iter().max_by_key(|x| x.0).unwrap();
-    println!("{:#?}", vec);
-    *pressure
+    let total_flows = graph
+        .iter()
+        .filter(|x| x.flow_rate > 0 || x.id == cur_valve.id)
+        .count()
+        - 1;
+
+    let limits = if total_flows % 2 == 0 {
+        let start = total_flows / 2;
+
+        vec![((start, 0), (start, 0))]
+    } else {
+        let start = total_flows / 2;
+        vec![
+            ((start - 1, 500), (start + 3, 1000)),
+            // ((start, 1000), (start + 2, 1000)),
+        ]
+    };
+    let length = limits.len();
+    let paths = limits
+        .into_iter()
+        .enumerate()
+        .map(|(idx, x)| {
+            if idx % 10000 == 0 {
+                println!("{} of {}", idx, length);
+            }
+            x
+        })
+        .flat_map(|(low_limit, high_limit)| {
+            println!("{} {:?} {:?}", total_flows, low_limit, high_limit);
+
+            let low = max_pressure_rec(cur_valve, graph, 26, &vec![], low_limit.0)
+                .into_iter()
+                .filter(|x| x.0 > low_limit.1)
+                .collect_vec();
+            let high = max_pressure_rec(cur_valve, graph, 26, &vec![], high_limit.0)
+                .into_iter()
+                .filter(|x| x.0 > high_limit.1)
+                .collect_vec();
+
+            vec![low, high]
+        })
+        .multi_cartesian_product();
+    // .filter(|x| {
+    //     let vec_len = x.iter().fold(0, |acc, cur| acc + cur.1.len());
+    //     vec_len == total_flows + 2
+    // });
+
+    let length = paths.clone().count();
+    println!("length - {}", length);
+
+    let stuff = paths
+        .enumerate()
+        .map(|(idx, x)| {
+            if idx % 1000000 == 0 {
+                println!("{} of {} - {}%", idx, length, (idx * 100) / length);
+            }
+            x
+        })
+        .map(|vec| {
+            vec.iter()
+                .fold((0, vec![]), |(pressure, mut v), (cur_p, cur_v)| {
+                    v.append(&mut cur_v.clone());
+                    (pressure + cur_p, v)
+                })
+        })
+        .filter(|x| x.0 > 1700)
+        .enumerate()
+        .map(|(idx, x)| {
+            if idx % 1000000 == 0 {
+                println!("Passed filter");
+            }
+            x
+        })
+        .filter(|(_, x)| {
+            x.iter()
+                .filter(|x| *x.clone() != cur_valve.id.clone())
+                .all_unique()
+        })
+        .collect_vec();
+    // let (pressure, vec) = results.iter().max_by_key(|x| x.0).unwrap();
+    // println!("{:#?}", stuff);
+    println!("{:#?}", stuff.len());
+    let x = stuff.iter().max_by_key(|x| x.0).unwrap();
+    println!("{:?}", x.1);
+    x.0
 }
 
 pub fn solution_1(file_contents: String) -> usize {
@@ -281,7 +271,7 @@ challenge_test_suite!(
     1474,
     solution_2,
     1707,
-    1,
+    2100,
     "src",
     "year_2022",
     "day_16"
