@@ -123,28 +123,23 @@ fn max_pressure_rec(
             let next_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap();
             let time_left = time_left - tunnel.distance - 1;
 
-            if visited.len() == 2 && cur_valve.id == "DD" {
-                println!("exploring {}", tunnel.to);
-            }
             let t = max_pressure_rec(next_valve, graph, time_left, &visited)
                 .into_iter()
                 .map(|(pressure, vec)| {
                     let pressure_delta = time_left * tunnel.flow_rate;
                     // if visited.len() == 4 && tunnel.to == "HH" && cur_valve.id == "JJ" {
+                    if visited.len() == 6 && tunnel.to == "CC" && cur_valve.id == "EE" {
                     // if visited.len() == 1 && tunnel.to == "DD" && cur_valve.id == "AA" {
-                    //     if visited.len() == 1 && tunnel.to == "DD" {
-                    //     // if visited.len() == 2 && tunnel.to == "BB" && cur_valve.id == "DD" {
-                    //         println!("From {} go to {} arrive at {} pressure released by valve {} ({}, {:?})",
-                    //     cur_valve.id, tunnel.to, time_left, pressure_delta, tunnel.distance, visited,
-                    // );
-                    //     }
+                        // if visited.len() == 1 && tunnel.to == "DD" {
+                        // if visited.len() == 2 && tunnel.to == "BB" && cur_valve.id == "DD" {
+                            println!("From {} go to {} arrive at {} pressure released by valve {} ({}, {:?})",
+                        cur_valve.id, tunnel.to, time_left, pressure_delta, tunnel.distance, visited,
+                    );
+                        }
                     let pressure = pressure + pressure_delta;
                     (pressure, vec.clone())
                 })
                 .collect_vec();
-            if visited.len() == 2 && cur_valve.id == "DD" && tunnel.to == "BB" {
-                println!("dd result {:?}", t);
-            }
             t
         })
         .collect_vec();
