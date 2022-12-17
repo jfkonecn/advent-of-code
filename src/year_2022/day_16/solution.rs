@@ -64,17 +64,17 @@ fn parse_raw_valves(file_contents: String) -> Vec<RawValve> {
 
 fn get_tunnels(raw_valve: &RawValve, graph: &Vec<RawValve>) -> Vec<Tunnel> {
     let mut visited = HashMap::new();
-    let mut stack = vec![raw_valve];
+    let mut stack = vec![(raw_valve, 0)];
 
-    let mut cur_distance = 0;
-    while let Some(cur_valve) = stack.pop() {
+    while let Some((cur_valve, cur_distance)) = stack.pop() {
         visited.insert(cur_valve.id.clone(), (cur_distance, cur_valve.flow_rate));
-        cur_distance += 1;
+        let cur_distance = cur_distance + 1;
         for tunnel_id in cur_valve.tunnels.iter() {
             if let Some(mut x) = visited.get_mut(tunnel_id) {
                 x.0 = x.0.min(cur_distance);
             } else {
-                stack.push(graph.iter().find(|x| &x.id == tunnel_id).unwrap())
+                let new_valve = graph.iter().find(|x| &x.id == tunnel_id).unwrap();
+                stack.push((new_valve, cur_distance));
             }
         }
     }
@@ -100,11 +100,39 @@ fn to_valves(raw_valves: &Vec<RawValve>) -> Vec<Valve> {
         .collect_vec()
 }
 
+fn max_pressure(cur_valve: &Valve, graph: &Vec<Valve>) -> usize {
+    let mut visited = HashMap::new();
+    let mut stack = vec![(cur_valve, 30, 0)];
+
+    while let Some((cur_valve, time_left, pressure_released)) = stack.pop() {
+        let (time_left, pressure_released) = if time_left > 1 {
+            let time_left = time_left - 1;
+            let pressure_released = pressure_released + (cur_valve.flow_rate * time_left);
+            (time_left, pressure_released)
+        } else {
+            (time_left, pressure_released)
+        };
+        visited.insert(cur_valve.id.clone(), pressure_released);
+        for tunnel in cur_valve.tunnels.iter() {
+            if let Some(mut x) = visited.get_mut(&tunnel.to) {
+                x = &mut pressure_released.max(*x);
+            } else {
+                let new_valve = graph.iter().find(|x| x.id == tunnel.to).unwrap();
+                stack.push((new_valve, time_left, pressure_released));
+            }
+        }
+    }
+    *visited.iter().map(|(_, x)| x).max().unwrap()
+}
+
 pub fn solution_1(file_contents: String) -> usize {
     let raw_valves = parse_raw_valves(file_contents);
     let valves = to_valves(&raw_valves);
-    println!("{:?}", valves);
-    0
+    valves
+        .iter()
+        .map(|x| max_pressure(x, &valves))
+        .max()
+        .unwrap()
 }
 
 pub fn solution_2(file_contents: String) -> usize {
