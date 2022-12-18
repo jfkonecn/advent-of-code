@@ -235,7 +235,7 @@ impl Cave {
         }
     }
 
-    fn move_rock_down(&mut self, cave: &Cave) -> Option<()> {
+    fn move_rock_down(&mut self) -> Option<()> {
         let falling_rock = self.falling_rock.as_mut();
         let points = falling_rock.get_points();
         let floor_to_bottom = points.iter().map(|(_, y)| y == &0).count() > 0;
