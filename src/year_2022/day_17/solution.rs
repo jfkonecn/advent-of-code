@@ -1,5 +1,6 @@
 use crate::common::inputs::challenge_test_suite;
 use itertools::Itertools;
+use pathfinding::prelude::directions::W;
 use std::cmp::*;
 use std::collections::*;
 
@@ -192,16 +193,18 @@ impl Rock for SquareRock {
 
 struct Cave {
     falling_rock: Box<dyn Rock>,
-    fallen_rocks: Vec<Box<dyn Rock>>,
+    fallen_rocks: Vec<Vec<(usize, usize)>>,
     taken_space: HashSet<(usize, usize)>,
+    commands: Vec<Command>,
 }
 
 impl Cave {
-    fn new() -> Self {
+    fn new(commands: Vec<Command>) -> Self {
         Cave {
             falling_rock: Box::new(DashRock::new(4)),
             fallen_rocks: vec![],
             taken_space: HashSet::new(),
+            commands,
         }
     }
 
@@ -212,7 +215,7 @@ impl Cave {
     fn move_rock_left(&mut self) -> () {
         let falling_rock = self.falling_rock.as_mut();
         let points = falling_rock.get_points();
-        let wall_to_left = points.iter().map(|(x, _)| x == &0).count() > 0;
+        let wall_to_left = points.iter().filter(|(x, _)| x == &0).count() > 0;
         if wall_to_left {
             return;
         }
@@ -225,7 +228,7 @@ impl Cave {
     fn move_rock_right(&mut self) -> () {
         let falling_rock = self.falling_rock.as_mut();
         let points = falling_rock.get_points();
-        let wall_to_right = points.iter().map(|(x, _)| x == &6).count() > 0;
+        let wall_to_right = points.iter().filter(|(x, _)| x == &6).count() > 0;
         if wall_to_right {
             return;
         }
@@ -238,24 +241,62 @@ impl Cave {
     fn move_rock_down(&mut self) -> Option<()> {
         let falling_rock = self.falling_rock.as_mut();
         let points = falling_rock.get_points();
-        let floor_to_bottom = points.iter().map(|(_, y)| y == &0).count() > 0;
+        let floor_to_bottom = points.iter().filter(|(_, y)| y == &0).count() > 0;
         if floor_to_bottom {
             return None;
         }
         let vec = points.iter().map(|(x, y)| (*x, *y - 1)).collect_vec();
-        if self.intersects(&vec) {
+        if !self.intersects(&vec) {
             self.falling_rock.set_points(vec);
             Some(())
         } else {
             None
         }
     }
+
+    fn next_rock(&mut self) {
+        for point in self.falling_rock.get_points() {
+            self.taken_space.insert(*point);
+        }
+        let vec = self.falling_rock.get_points().clone();
+        self.fallen_rocks.push(vec);
+        let bottom_y = self.tower_height() + 2;
+        let new_rock = self.falling_rock.next_rock(bottom_y);
+        self.falling_rock = new_rock;
+    }
+
+    fn simulate(&mut self, total_blocks: usize) {
+        for _ in 0..total_blocks {
+            let mut i = 0;
+            let command_len = self.commands.len();
+            loop {
+                let command = self.commands.get(i / command_len).unwrap();
+                match command {
+                    Command::PushLeft => self.move_rock_left(),
+                    Command::PushRight => self.move_rock_right(),
+                }
+
+                if let None = self.move_rock_down() {
+                    break;
+                }
+                i += 1;
+            }
+            self.next_rock();
+        }
+    }
+
+    fn tower_height(&self) -> usize {
+        self.taken_space.iter().map(|(_, y)| *y).max().unwrap() + 1
+    }
 }
 
 pub fn solution_1(file_contents: String) -> usize {
     let commands = parse_commands(file_contents);
     println!("{:?}", commands);
-    0
+    let mut cave = Cave::new(commands);
+    cave.simulate(2022);
+    println!("{:?}", cave.fallen_rocks);
+    cave.tower_height()
 }
 
 pub fn solution_2(file_contents: String) -> usize {
