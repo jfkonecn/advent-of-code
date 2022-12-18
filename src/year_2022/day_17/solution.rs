@@ -19,6 +19,11 @@ impl From<char> for Command {
     }
 }
 
+trait Rock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock>;
+    fn get_points(&self) -> &Vec<(usize, usize)>;
+}
+
 fn parse_commands(file_contents: String) -> Vec<Command> {
     file_contents
         .chars()
@@ -37,6 +42,16 @@ impl DashRock {
         DashRock {
             points: vec![(2, bottom_y), (3, bottom_y), (4, bottom_y), (5, bottom_y)],
         }
+    }
+}
+
+impl Rock for DashRock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock> {
+        Box::new(PlusRock::new(bottom_y))
+    }
+
+    fn get_points(&self) -> &Vec<(usize, usize)> {
+        &self.points
     }
 }
 
@@ -59,14 +74,71 @@ impl PlusRock {
     }
 }
 
+impl Rock for PlusRock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock> {
+        Box::new(BackwardsLRock::new(bottom_y))
+    }
+
+    fn get_points(&self) -> &Vec<(usize, usize)> {
+        &self.points
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct BackwardsLRock {
     points: Vec<(usize, usize)>,
 }
 
+impl BackwardsLRock {
+    fn new(bottom_y: usize) -> Self {
+        BackwardsLRock {
+            points: vec![
+                (2, bottom_y),
+                (3, bottom_y),
+                (4, bottom_y),
+                (4, bottom_y + 1),
+                (4, bottom_y + 2),
+            ],
+        }
+    }
+}
+
+impl Rock for BackwardsLRock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock> {
+        Box::new(VerticalRock::new(bottom_y))
+    }
+
+    fn get_points(&self) -> &Vec<(usize, usize)> {
+        &self.points
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct VerticalRock {
     points: Vec<(usize, usize)>,
+}
+
+impl VerticalRock {
+    fn new(bottom_y: usize) -> Self {
+        VerticalRock {
+            points: vec![
+                (2, bottom_y),
+                (2, bottom_y + 1),
+                (2, bottom_y + 2),
+                (3, bottom_y + 3),
+            ],
+        }
+    }
+}
+
+impl Rock for VerticalRock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock> {
+        Box::new(SquareRock::new(bottom_y))
+    }
+
+    fn get_points(&self) -> &Vec<(usize, usize)> {
+        &self.points
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -87,55 +159,26 @@ impl SquareRock {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Rock {
-    Dash(DashRock),
-    Plus(PlusRock),
-    BackwardsL(BackwardsLRock),
-    Vertical(VerticalRock),
-    Square(SquareRock),
-}
-
-impl From<DashRock> for Rock {
-    fn from(rock: DashRock) -> Self {
-        Rock::Dash(rock)
+impl Rock for SquareRock {
+    fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock> {
+        Box::new(DashRock::new(bottom_y))
     }
-}
 
-impl From<PlusRock> for Rock {
-    fn from(rock: PlusRock) -> Self {
-        Rock::Plus(rock)
-    }
-}
-
-impl From<BackwardsLRock> for Rock {
-    fn from(rock: BackwardsLRock) -> Self {
-        Rock::BackwardsL(rock)
-    }
-}
-
-impl From<VerticalRock> for Rock {
-    fn from(rock: VerticalRock) -> Self {
-        Rock::Vertical(rock)
-    }
-}
-
-impl From<SquareRock> for Rock {
-    fn from(rock: SquareRock) -> Self {
-        Rock::Square(rock)
+    fn get_points(&self) -> &Vec<(usize, usize)> {
+        &self.points
     }
 }
 
 struct Cave {
-    falling_rock: Rock,
-    fallen_rocks: Vec<Rock>,
+    falling_rock: Box<dyn Rock>,
+    fallen_rocks: Vec<Box<dyn Rock>>,
     taken_space: HashSet<(usize, usize)>,
 }
 
 impl Cave {
     fn new() -> Self {
         Cave {
-            falling_rock: DashRock::new(4).into(),
+            falling_rock: Box::new(DashRock::new(4)),
             fallen_rocks: vec![],
             taken_space: HashSet::new(),
         }
