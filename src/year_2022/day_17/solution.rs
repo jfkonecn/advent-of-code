@@ -260,7 +260,9 @@ impl Cave {
         }
         let vec = self.falling_rock.get_points().clone();
         self.fallen_rocks.push(vec);
-        let bottom_y = self.tower_height() + 2;
+        println!("{:?}", self.taken_space);
+        let bottom_y = self.taken_space.iter().map(|(_, y)| y).max().unwrap() + 3;
+        println!("bottom y - {}", bottom_y);
         let new_rock = self.falling_rock.next_rock(bottom_y);
         self.falling_rock = new_rock;
     }
@@ -294,7 +296,7 @@ pub fn solution_1(file_contents: String) -> usize {
     let commands = parse_commands(file_contents);
     println!("{:?}", commands);
     let mut cave = Cave::new(commands);
-    cave.simulate(2022);
+    cave.simulate(5);
     println!("{:?}", cave.fallen_rocks);
     cave.tower_height()
 }
