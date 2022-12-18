@@ -22,6 +22,7 @@ impl From<char> for Command {
 trait Rock {
     fn next_rock(&self, bottom_y: usize) -> Box<dyn Rock>;
     fn get_points(&self) -> &Vec<(usize, usize)>;
+    fn set_points(&mut self, vec: Vec<(usize, usize)>);
 }
 
 fn parse_commands(file_contents: String) -> Vec<Command> {
@@ -53,6 +54,10 @@ impl Rock for DashRock {
     fn get_points(&self) -> &Vec<(usize, usize)> {
         &self.points
     }
+
+    fn set_points(&mut self, vec: Vec<(usize, usize)>) {
+        self.points = vec;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -81,6 +86,10 @@ impl Rock for PlusRock {
 
     fn get_points(&self) -> &Vec<(usize, usize)> {
         &self.points
+    }
+
+    fn set_points(&mut self, vec: Vec<(usize, usize)>) {
+        self.points = vec;
     }
 }
 
@@ -111,6 +120,10 @@ impl Rock for BackwardsLRock {
     fn get_points(&self) -> &Vec<(usize, usize)> {
         &self.points
     }
+
+    fn set_points(&mut self, vec: Vec<(usize, usize)>) {
+        self.points = vec;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -138,6 +151,10 @@ impl Rock for VerticalRock {
 
     fn get_points(&self) -> &Vec<(usize, usize)> {
         &self.points
+    }
+
+    fn set_points(&mut self, vec: Vec<(usize, usize)>) {
+        self.points = vec;
     }
 }
 
@@ -167,6 +184,10 @@ impl Rock for SquareRock {
     fn get_points(&self) -> &Vec<(usize, usize)> {
         &self.points
     }
+
+    fn set_points(&mut self, vec: Vec<(usize, usize)>) {
+        self.points = vec;
+    }
 }
 
 struct Cave {
@@ -181,6 +202,52 @@ impl Cave {
             falling_rock: Box::new(DashRock::new(4)),
             fallen_rocks: vec![],
             taken_space: HashSet::new(),
+        }
+    }
+
+    fn intersects(&self, vec: &Vec<(usize, usize)>) -> bool {
+        vec.iter().filter(|x| self.taken_space.contains(x)).count() > 0
+    }
+
+    fn move_rock_left(&mut self) -> () {
+        let falling_rock = self.falling_rock.as_mut();
+        let points = falling_rock.get_points();
+        let wall_to_left = points.iter().map(|(x, _)| x == &0).count() > 0;
+        if wall_to_left {
+            return;
+        }
+        let vec = points.iter().map(|(x, y)| (*x - 1, *y)).collect_vec();
+        if self.intersects(&vec) {
+            self.falling_rock.set_points(vec);
+        }
+    }
+
+    fn move_rock_right(&mut self) -> () {
+        let falling_rock = self.falling_rock.as_mut();
+        let points = falling_rock.get_points();
+        let wall_to_right = points.iter().map(|(x, _)| x == &6).count() > 0;
+        if wall_to_right {
+            return;
+        }
+        let vec = points.iter().map(|(x, y)| (*x + 1, *y)).collect_vec();
+        if self.intersects(&vec) {
+            self.falling_rock.set_points(vec);
+        }
+    }
+
+    fn move_rock_down(&mut self, cave: &Cave) -> Option<()> {
+        let falling_rock = self.falling_rock.as_mut();
+        let points = falling_rock.get_points();
+        let floor_to_bottom = points.iter().map(|(_, y)| y == &0).count() > 0;
+        if floor_to_bottom {
+            return None;
+        }
+        let vec = points.iter().map(|(x, y)| (*x, *y - 1)).collect_vec();
+        if self.intersects(&vec) {
+            self.falling_rock.set_points(vec);
+            Some(())
+        } else {
+            None
         }
     }
 }
